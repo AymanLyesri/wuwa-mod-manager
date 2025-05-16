@@ -53,27 +53,26 @@ fn set_mod_state(path: String, enabled: bool) -> Result<(), String> {
     if !mod_path.exists() {
         return Err("Mod path does not exist".into());
     }
+
     if let Some(file_name) = mod_path.file_name() {
         let file_name_str = file_name.to_string_lossy();
+
         if enabled {
-            if file_name_str.contains("disabled_") {
-                let new_file_name = file_name_str.replacen("disabled_", "", 1);
-                let new_path = mod_path.with_file_name(new_file_name);
+            if let Some(stripped) = file_name_str.strip_prefix("disabled ") {
+                let new_path = mod_path.with_file_name(stripped);
                 std::fs::rename(mod_path, new_path).map_err(|e| e.to_string())?;
             }
-        } else {
-            if !file_name_str.contains("disabled_") {
-                let new_file_name = format!("disabled_{}", file_name_str);
-                let new_path = mod_path.with_file_name(new_file_name);
-                std::fs::rename(mod_path, new_path).map_err(|e| e.to_string())?;
-            }
+        } else if !file_name_str.starts_with("disabled ") {
+            let new_path = mod_path.with_file_name(format!("disabled {}", file_name_str));
+            std::fs::rename(mod_path, new_path).map_err(|e| e.to_string())?;
         }
     }
+
     Ok(())
 }
-
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_folder_contents,
             get_parent_directory,
