@@ -1,13 +1,11 @@
 import React from 'react';
 
 interface HeaderProps {
-    columns: number;
-    setColumns: (columns: number) => void;
     onAddMod?: () => void; // Optional prop for add mod functionality
     onSelectFolder?: () => void; // New prop for folder selection
 }
 
-const Header: React.FC<HeaderProps> = ({ columns, setColumns, onAddMod, onSelectFolder }) => {
+const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
     return (
         <header className="bg-gray-800 p-4 shadow-md relative z-10">
             <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
@@ -18,21 +16,6 @@ const Header: React.FC<HeaderProps> = ({ columns, setColumns, onAddMod, onSelect
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <div className="flex items-center bg-gray-700 rounded-lg px-3 py-2">
-                        <label htmlFor="columns-select" className="mr-2 text-gray-300 text-sm font-medium">
-                            Grid Columns:
-                        </label>
-                        <select
-                            id="columns-select"
-                            value={columns}
-                            onChange={(e) => setColumns(Number(e.target.value))}
-                            className="bg-gray-800 text-white rounded px-2 py-1 text-sm border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                            {[1, 2, 3, 4, 5].map(num => (
-                                <option key={num} value={num}>{num}</option>
-                            ))}
-                        </select>
-                    </div>
 
                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                         <button

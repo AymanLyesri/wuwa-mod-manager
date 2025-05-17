@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import ModGrid from './components/ModGrid';
 import { Mod } from './interfaces/Mod.interface';
-import { getFolderContents, setModDetails, setModState } from './services/folder.service';
+import { getFolderContents, setModInfo } from './services/folder.service';
 import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
 import { open } from '@tauri-apps/plugin-dialog';
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
-  const [columns, setColumns] = useState<number>(4);
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [modDirPath, setModDirPath] = useState<string>("");
@@ -17,17 +16,12 @@ const App: React.FC = () => {
     if (localStorage.getItem('modDirPath')) {
       setModDirPath(localStorage.getItem('modDirPath') as string);
     }
-
-    setColumns(parseInt(localStorage.getItem('columns') || '3'));
   }, []);
 
   useEffect(() => {
     fetchMods();
   }, [modDirPath]);
 
-  useEffect(() => {
-    localStorage.setItem('columns', columns.toString());
-  }, [columns]);
 
 
   const fetchMods = async () => {
@@ -44,11 +38,8 @@ const App: React.FC = () => {
 
   const handleToggleMod = (mod: Mod, enabled: boolean) => {
     console.log('Toggling mod:', mod.id, 'to', enabled);
+    setModInfo({ ...mod, enabled })
 
-    setMods(mods.map(m =>
-      m.id === mod.id ? { ...m, enabled } : m
-    ));
-    setModState(mod, enabled);
     if (selectedMod?.id === mod.id) {
       setSelectedMod({ ...selectedMod, enabled });
     }
@@ -62,7 +53,7 @@ const App: React.FC = () => {
 
   const handleUpdateMod = (updatedMod: Mod) => {
     setMods(mods.map(mod => mod.id === updatedMod.id ? updatedMod : mod));
-    setModDetails(updatedMod);
+    setModInfo(updatedMod);
     setSelectedMod(updatedMod);
   };
 
@@ -93,8 +84,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <Header
-        columns={columns}
-        setColumns={setColumns}
         // onAddMod={/* your existing add mod function */}
         onSelectFolder={handleSelectFolder}
       />
@@ -132,7 +121,6 @@ const App: React.FC = () => {
           {modDirPath ? (
             <ModGrid
               mods={mods}
-              columns={columns}
               onToggleMod={handleToggleMod}
               onModClick={handleModClick}
             />

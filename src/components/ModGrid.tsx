@@ -4,22 +4,14 @@ import { Mod } from '../interfaces/Mod.interface';
 
 interface ModGridProps {
     mods: Mod[];
-    columns: number;
     onToggleMod: (mod: Mod, enabled: boolean) => void;
     onModClick: (mod: Mod) => void;
 }
 
-const ModGrid: React.FC<ModGridProps> = ({ mods, columns, onToggleMod, onModClick }) => {
-    const gridClasses = {
-        1: 'grid-cols-1',
-        2: 'grid-cols-2',
-        3: 'grid-cols-3',
-        4: 'grid-cols-4',
-        5: 'grid-cols-5',
-    }[columns] || 'grid-cols-4';
-
+const ModGrid: React.FC<ModGridProps> = ({ mods, onToggleMod, onModClick }) => {
     return (
-        <div className={`grid ${gridClasses} gap-6 p-6`}>
+        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))] gap-6 p-6">
+
             {mods.map((mod) => (
                 <ModCard
                     key={mod.id}
