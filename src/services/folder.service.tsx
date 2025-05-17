@@ -1,13 +1,8 @@
 // const invoke = window.__TAURI__.invoke;
 
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { Mod } from "../interfaces/Mod.interface";
-
-export interface FolderItem {
-    name: string;
-    path: string;
-    isDirectory: boolean;
-}
+import { exists, readFile } from '@tauri-apps/plugin-fs';
 
 /**
  * Get contents of a directory
@@ -17,11 +12,36 @@ export interface FolderItem {
 export const getFolderContents = async (path: string): Promise<Mod[]> => {
     try {
         const contents = await invoke<Mod[]>('get_folder_contents', { path });
+
         // add ids to contents
-        const contentsWithIds = contents.map((mod, index) => ({
-            ...mod,
-            id: index.toString(),
-            enabled: !mod.name.startsWith('disabled'),
+        const contentsWithIds = await Promise.all(contents.map(async (mod, index) => {
+            const thumbnailPath = convertFileSrc(mod.path + '\\thumbnail.png') // using \\
+            const doesThumbnailExists = await exists(mod.path + '\\thumbnail.png');
+
+            // get mod details from json by reading the file
+            const jsonPath = mod.path + '\\mod.json';
+            const jsonExists = await exists(jsonPath);
+            if (jsonExists) {
+                const jsonContent = await readFile(jsonPath);
+                const jsonString = new TextDecoder().decode(jsonContent);
+                const json = JSON.parse(jsonString);
+                mod.name = json.name || mod.name;
+                mod.author = json.author || mod.author;
+                mod.description = json.description || mod.description;
+                mod.version = json.version || mod.version;
+            }
+
+
+            return ({
+                ...mod,
+                id: index.toString(),
+                name: mod.name.replace('disabled', '').trim(),
+                version: mod.version || '0.0.0',
+                author: mod.author || 'Unknown',
+                description: mod.description || 'No description available',
+                enabled: !mod.name.startsWith('disabled'),
+                thumbnail: doesThumbnailExists ? thumbnailPath : '',
+            })
         }));
         return contentsWithIds;
     } catch (error) {
@@ -56,20 +76,22 @@ export const setModState = async (mod: Mod, state: boolean) => {
     }
 }
 
-export const testFolderService = async () => {
+export const setModThumbnail = async (mod: Mod, thumbnail: string) => {
     try {
-        // Test with a known directory (adjust for your system)
-        const testPath = '/eternal/Coding/mod_manager/Mods'; // Windows
-        // const testPath = '/Users'; // macOS
-        // const testPath = '/home'; // Linux
-
-        console.log('--- Testing getFolderContents ---');
-        const allContents = await getFolderContents(testPath);
-        console.log('All contents:', allContents);
-
-        return allContents;
+        const result = await invoke('set_mod_thumbnail', { path: mod.path, thumbnail });
+        return result;
     } catch (error) {
-        console.error('Test failed:', error);
+        console.error('Error setting mod thumbnail:', error);
         throw error;
     }
-};
+}
+
+export const setModDetails = async (mod: Mod) => {
+    try {
+        const result = await invoke('set_mod_details', { name: mod.name, path: mod.path, author: mod.author || '', description: mod.description || '', version: mod.version || '' });
+        return result;
+    } catch (error) {
+        console.error('Error setting mod details:', error);
+        throw error;
+    }
+}

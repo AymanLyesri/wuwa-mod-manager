@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ModGrid from './components/ModGrid';
 import { Mod } from './interfaces/Mod.interface';
-import { getFolderContents, setModState } from './services/folder.service';
+import { getFolderContents, setModDetails, setModState } from './services/folder.service';
 import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -11,12 +11,29 @@ const App: React.FC = () => {
   const [columns, setColumns] = useState<number>(4);
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [modPath, setModPath] = useState<string>("");
+  const [modDirPath, setModDirPath] = useState<string>("");
+
+  useEffect(() => {
+    if (localStorage.getItem('modDirPath')) {
+      setModDirPath(localStorage.getItem('modDirPath') as string);
+    }
+
+    setColumns(parseInt(localStorage.getItem('columns') || '3'));
+  }, []);
+
+  useEffect(() => {
+    fetchMods();
+  }, [modDirPath]);
+
+  useEffect(() => {
+    localStorage.setItem('columns', columns.toString());
+  }, [columns]);
+
 
   const fetchMods = async () => {
     try {
-      if (modPath) {
-        const mods = await getFolderContents(modPath);
+      if (modDirPath) {
+        const mods = await getFolderContents(modDirPath);
         console.log('Fetched mods:', mods);
         setMods(mods);
       }
@@ -24,18 +41,6 @@ const App: React.FC = () => {
       console.error('Error fetching mods:', error);
     }
   };
-
-  useEffect(() => {
-    // Load saved path from localStorage if available
-    const savedPath = localStorage.getItem('modPath');
-    if (savedPath) {
-      setModPath(savedPath);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMods();
-  }, [modPath]);
 
   const handleToggleMod = (mod: Mod, enabled: boolean) => {
     console.log('Toggling mod:', mod.id, 'to', enabled);
@@ -57,6 +62,7 @@ const App: React.FC = () => {
 
   const handleUpdateMod = (updatedMod: Mod) => {
     setMods(mods.map(mod => mod.id === updatedMod.id ? updatedMod : mod));
+    setModDetails(updatedMod);
     setSelectedMod(updatedMod);
   };
 
@@ -66,7 +72,6 @@ const App: React.FC = () => {
 
   // Then add this function to your App component
   const handleSelectFolder = async () => {
-
     try {
       const file = await open({
         multiple: false,
@@ -75,8 +80,8 @@ const App: React.FC = () => {
 
       if (file) {
         const selectedPath = file as string;
-        setModPath(selectedPath);
-        localStorage.setItem('modPath', selectedPath); // Save the path to localStorage
+        setModDirPath(selectedPath);
+        localStorage.setItem('modDirPath', selectedPath); // Save the path to localStorage
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
@@ -100,8 +105,8 @@ const App: React.FC = () => {
               <h2 className="text-xl font-semibold">Installed Mods</h2>
               <p className="text-gray-400">
                 {mods.length} mods installed • {mods.filter(m => m.enabled).length} enabled
-                {modPath && (
-                  <span className="block text-sm mt-1">Path: {modPath}</span>
+                {modDirPath && (
+                  <span className="block text-sm mt-1">Path: {modDirPath}</span>
                 )}
               </p>
             </div>
@@ -124,7 +129,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {modPath ? (
+          {modDirPath ? (
             <ModGrid
               mods={mods}
               columns={columns}

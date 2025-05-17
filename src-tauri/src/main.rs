@@ -67,16 +67,56 @@ fn set_mod_state(path: String, enabled: bool) -> Result<(), String> {
             std::fs::rename(mod_path, new_path).map_err(|e| e.to_string())?;
         }
     }
-
     Ok(())
 }
+
+#[command]
+fn set_mod_thumbnail(path: String, thumbnail: String) -> Result<(), String> {
+    let mod_path = Path::new(&path);
+    if !mod_path.exists() {
+        return Err("Mod path does not exist".into());
+    }
+
+    let thumbnail_path = mod_path.join("thumbnail.png");
+    std::fs::copy(thumbnail, thumbnail_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
+fn set_mod_details(
+    name: String,
+    author: String,
+    version: String,
+    description: String,
+    path: String,
+) -> Result<(), String> {
+    // into a json file
+    let mod_path = Path::new(&path);
+    if !mod_path.exists() {
+        return Err("Mod path does not exist".into());
+    }
+    let details = serde_json::json!({
+        "name": name,
+        "author": author,
+        "version": version,
+        "description": description,
+    });
+    let details_path = mod_path.join("mod.json");
+    std::fs::write(details_path, details.to_string()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[command]
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_folder_contents,
             get_parent_directory,
             set_mod_state,
+            set_mod_thumbnail,
+            set_mod_details,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

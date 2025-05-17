@@ -5,6 +5,6 @@ export interface Mod {
     author: string;
     description: string;
     version: string;
-    imageUrl: string;
+    thumbnail: string;
     enabled: boolean;
 }

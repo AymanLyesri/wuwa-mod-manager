@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Mod } from '../interfaces/Mod.interface';
+import { open } from '@tauri-apps/plugin-dialog';
+import { setModThumbnail } from '../services/folder.service';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 interface ModInfoPanelProps {
     mod: Mod;
@@ -9,30 +12,54 @@ interface ModInfoPanelProps {
 }
 
 const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onToggleMod }) => {
-    const [editedMod, setEditedMod] = useState<Mod>({ ...mod });
+    const [focusedMod, setFocusedMod] = useState<Mod>(mod);
 
-    // Reset editedMod when the mod prop changes
+    // Reset focusedMod when the mod prop changes
     useEffect(() => {
-        setEditedMod({ ...mod });
+        setFocusedMod(mod);
     }, [mod]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setEditedMod(prev => ({
+        setFocusedMod(prev => ({
             ...prev,
             [name]: value
         }));
     };
 
     const handleToggle = () => {
-        const newEnabledState = !editedMod.enabled;
-        onToggleMod(editedMod, newEnabledState);
-        setEditedMod(prev => ({ ...prev, enabled: newEnabledState }));
+        const newEnabledState = !focusedMod.enabled;
+        onToggleMod(focusedMod, newEnabledState);
+        setFocusedMod(prev => ({ ...prev, enabled: newEnabledState }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onUpdate(editedMod);
+        onUpdate(focusedMod);
+    };
+    const handleThumbnailChange = async () => {
+
+        console.log('Image change triggered');
+        try {
+            const file = await open({
+                multiple: false,
+                directory: false,
+            });
+
+            if (file) {
+                const selectedPath = file as string;
+                const displayPath = convertFileSrc(selectedPath);
+                setModThumbnail(focusedMod, selectedPath)
+                    .then(() => {
+                        onUpdate({ ...focusedMod, thumbnail: displayPath });
+                    })
+                    .catch((error) => {
+                        console.error('Error setting thumbnail:', error);
+                    });
+            }
+        } catch (error) {
+            console.error('Error selecting folder:', error);
+        }
     };
 
     return (
@@ -48,27 +75,47 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onT
             </div>
 
             <div className="mb-6">
-                {mod.imageUrl ? (
-                    <img src={mod.imageUrl} alt={mod.name} className="w-full h-48 object-cover rounded-lg mb-4" />
-                ) : (
-                    <div className="w-full h-48 bg-gray-700 flex items-center justify-center rounded-lg mb-4">
-                        <span className="text-gray-500">No Image</span>
+                {/* <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={handleThumbnailChange}
+                /> */}
+                <div
+                    className="cursor-pointer group"
+                    onClick={handleThumbnailChange}
+                    title="Click to change image"
+                >
+                    {focusedMod.thumbnail ? (
+                        <img
+                            src={focusedMod.thumbnail}
+                            alt={focusedMod.name}
+                            className="w-full h-48 object-cover rounded-lg mb-4 group-hover:opacity-80 transition"
+                        />
+                    ) : (
+                        <div className="w-full h-48 bg-gray-700 flex items-center justify-center rounded-lg mb-4 group-hover:bg-gray-600 transition">
+                            <span className="text-gray-500">No Image</span>
+                        </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                        <span className="bg-black bg-opacity-50 text-white px-2 py-1 rounded">Change Image</span>
                     </div>
-                )}
+                </div>
             </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold">{editedMod.name}</h3>
+                    <h3 className="text-lg font-bold">{focusedMod.name}</h3>
                     <button
                         type="button"
-                        className={`px-3 py-1 rounded text-sm font-medium ${editedMod.enabled
+                        className={`px-3 py-1 rounded text-sm font-medium ${focusedMod.enabled
                             ? 'bg-green-600 hover:bg-green-700'
                             : 'bg-gray-600 hover:bg-gray-700'
                             } text-white`}
                         onClick={handleToggle}
                     >
-                        {editedMod.enabled ? 'Enabled' : 'Disabled'}
+                        {focusedMod.enabled ? 'Enabled' : 'Disabled'}
                     </button>
                 </div>
 
@@ -77,7 +124,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onT
                     <input
                         type="text"
                         name="name"
-                        value={editedMod.name}
+                        value={focusedMod.name}
                         onChange={handleChange}
                         className="w-full bg-gray-700 rounded px-3 py-2"
                     />
@@ -88,7 +135,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onT
                     <input
                         type="text"
                         name="version"
-                        value={editedMod.version}
+                        value={focusedMod.version}
                         onChange={handleChange}
                         className="w-full bg-gray-700 rounded px-3 py-2"
                     />
@@ -99,7 +146,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onT
                     <input
                         type="text"
                         name="author"
-                        value={editedMod.author}
+                        value={focusedMod.author}
                         onChange={handleChange}
                         className="w-full bg-gray-700 rounded px-3 py-2"
                     />
@@ -109,7 +156,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({ mod, onUpdate, onClose, onT
                     <label className="block text-gray-400 mb-2">Description</label>
                     <textarea
                         name="description"
-                        value={editedMod.description}
+                        value={focusedMod.description}
                         onChange={handleChange}
                         className="w-full bg-gray-700 rounded px-3 py-2 h-32"
                     />

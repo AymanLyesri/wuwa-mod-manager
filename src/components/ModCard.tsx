@@ -19,8 +19,8 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onToggle, onClick }) => {
             className="mod-card bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform hover:scale-105 cursor-pointer"
             onClick={onClick}
         >
-            {mod.imageUrl ? (
-                <img src={mod.imageUrl} alt={mod.name} className="w-full h-40 object-cover" />
+            {mod.thumbnail ? (
+                <img src={mod.thumbnail} alt={mod.name} className="w-full h-40 object-cover" />
             ) : (
                 <div className="w-full h-40 bg-gray-700 flex items-center justify-center">
                     <span className="text-gray-500">No Image</span>
