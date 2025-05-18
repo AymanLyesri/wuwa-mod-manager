@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mod } from '../interfaces/Mod.interface';
 import { open } from '@tauri-apps/plugin-dialog';
-import { setModThumbnail } from '../services/folder.service';
+import { setModThumbnail } from '../services/mod.service';
 import { convertFileSrc } from '@tauri-apps/api/core';
 
 // Design tokens
@@ -46,7 +46,6 @@ interface ModInfoPanelProps {
     isOpen?: boolean;
     onUpdate: (mod: Mod) => void;
     onClose: () => void;
-    onToggleMod: (mod: Mod, enabled: boolean) => void;
 }
 
 const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
@@ -54,7 +53,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     isOpen = true,
     onUpdate,
     onClose,
-    onToggleMod
 }) => {
     const [focusedMod, setFocusedMod] = useState<Mod>(mod);
     const [thumbnailPath, setThumbnailPath] = useState<string>('');
@@ -73,9 +71,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     };
 
     const handleToggle = () => {
-        const newEnabledState = !focusedMod.enabled;
-        onToggleMod(focusedMod, newEnabledState);
-        setFocusedMod(prev => ({ ...prev, enabled: newEnabledState }));
+        onUpdate({ ...focusedMod, enabled: !focusedMod.enabled });
     };
 
     const handleSubmit = (e: React.FormEvent) => {

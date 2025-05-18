@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::command;
+
+use std::fs::File;
+use std::io::{Cursor};
+
+use reqwest;
+use zip::ZipArchive;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,6 +156,113 @@ fn set_mod_info(mod_data: Mod) -> Result<(), String> {
     Ok(())
 }
 
+#[command]
+async fn download_mod(url: String, to: String) -> Result<(), String> {
+     // 1. Download with timeout and size limits
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download: {}", e))?;
+
+    // 2. Verify response status
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()));
+    }
+
+    // 3. Read with size limit (e.g., 100MB)
+    const MAX_SIZE: usize = 100 * 1024 * 1024;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    if bytes.len() > MAX_SIZE {
+        return Err(format!("File too large ({} > {} bytes)", bytes.len(), MAX_SIZE));
+    }
+
+    // 4. Validate ZIP structure before processing
+    let cursor = Cursor::new(bytes);
+    let mut archive = match ZipArchive::new(cursor) {
+        Ok(archive) => archive,
+        Err(e) => {
+            return Err(format!(
+                "Invalid ZIP archive: {}. Possible causes: \
+                1) File is corrupted \
+                2) Not a ZIP file \
+                3) Download was interrupted",
+                e
+            ))
+        }
+    };
+
+    // Check if all entries are inside a single root folder
+    let has_single_root_folder = {
+        let mut root_dirs = std::collections::HashSet::new();
+        for i in 0..archive.len() {
+            let file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let path = PathBuf::from(file.name());
+            if let Some(first_component) = path.components().next() {
+                root_dirs.insert(first_component.as_os_str().to_owned());
+            }
+            if root_dirs.len() > 1 {
+                break; // Multiple root folders/files → needs wrapping
+            }
+        }
+        root_dirs.len() == 1
+    };
+
+    // Determine extraction directory
+    let extraction_dir = if has_single_root_folder {
+        PathBuf::from(&to)  // Extract directly into 'to'
+    } else {
+        // Generate a folder name based on contents (e.g., first few file names)
+        let mut name_parts = Vec::new();
+        for i in 0..std::cmp::min(archive.len(), 3) { // Check up to 3 files
+            let file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let file_name = Path::new(file.name())
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            if !file_name.is_empty() {
+                name_parts.push(file_name.to_string());
+            }
+        }
+        let wrapper_name = if !name_parts.is_empty() {
+            format!("mod_{}", name_parts.join("_"))
+        } else {
+            "extracted_mod".to_string()
+        };
+        PathBuf::from(&to).join(wrapper_name)
+    };
+
+    // Create the extraction directory if needed
+    std::fs::create_dir_all(&extraction_dir).map_err(|e| e.to_string())?;
+
+    // Extract files
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let outpath = extraction_dir.join(file.name());
+
+        if file.name().ends_with('/') {
+            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
+            }
+            let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
+            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -157,7 +270,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_folder_mods,
             set_mod_thumbnail,
-            set_mod_info
+            set_mod_info,
+            download_mod,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

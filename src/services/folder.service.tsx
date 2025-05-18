@@ -23,23 +23,3 @@ export const getFolderContents = async (path: string): Promise<Mod[]> => {
     }
 };
 
-export const setModInfo = async (mod: Mod) => {
-    try {
-        const result = await invoke('set_mod_info', { modData: mod });
-        return result;
-    } catch (error) {
-        console.error('Error setting mod details:', error);
-        throw error;
-    }
-}
-
-
-export const setModThumbnail = async (mod: Mod, thumbnailPath: string) => {
-    try {
-        const result = await invoke('set_mod_thumbnail', { path: mod.path, thumbnailPath });
-        return result;
-    } catch (error) {
-        console.error('Error setting mod thumbnail:', error);
-        throw error;
-    }
-}

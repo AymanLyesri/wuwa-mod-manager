@@ -1,28 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import ModGrid from './components/ModGrid';
 import { Mod } from './interfaces/Mod.interface';
-import { getFolderContents, setModInfo } from './services/folder.service';
+import { getFolderContents } from './services/folder.service';
 import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
 import { open } from '@tauri-apps/plugin-dialog';
+import { downloadMod, setModInfo } from './services/mod.service';
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [modDirPath, setModDirPath] = useState<string>("");
+  const [sortMethod, setSortMethod] = useState<string>('name');
+
+  const sortOptions = [
+    { value: 'name', label: 'Name' },
+    { value: 'author', label: 'Author' },
+    { value: 'version', label: 'Version' },
+  ];
 
   useEffect(() => {
     if (localStorage.getItem('modDirPath')) {
       setModDirPath(localStorage.getItem('modDirPath') as string);
     }
+    if (localStorage.getItem('sortMethod')) {
+      setSortMethod(localStorage.getItem('sortMethod') as string);
+    }
   }, []);
 
+  // sort mods based on the selected method based on mod keys
   useEffect(() => {
-    fetchMods();
-  }, [modDirPath]);
-
-
+    const sortedMods = [...mods].sort((a, b) => {
+      if (sortMethod === 'name') {
+        return a.name.localeCompare(b.name);
+      } else if (sortMethod === 'author') {
+        return a.author.localeCompare(b.author);
+      } else if (sortMethod === 'version') {
+        // reverse the order of version comparison
+        return b.version.localeCompare(a.version);
+      }
+      return 0;
+    });
+    localStorage.setItem('sortMethod', sortMethod);
+    setMods(sortedMods);
+  }, [sortMethod]);
 
   const fetchMods = async () => {
     try {
@@ -34,16 +56,6 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Error fetching mods:', error);
     }
-  };
-
-  const handleToggleMod = (mod: Mod, enabled: boolean) => {
-    console.log('Toggling mod:', mod.id, 'to', enabled);
-    setModInfo({ ...mod, enabled })
-
-    if (selectedMod?.id === mod.id) {
-      setSelectedMod({ ...selectedMod, enabled });
-    }
-    fetchMods();
   };
 
   const handleModClick = (mod: Mod) => {
@@ -61,6 +73,12 @@ const App: React.FC = () => {
     setIsPanelOpen(false);
   };
 
+  const handleDownloadMod = (url: string) => {
+    downloadMod(url, modDirPath).finally(() => {
+      fetchMods();
+    });
+  }
+
   // Then add this function to your App component
   const handleSelectFolder = async () => {
     try {
@@ -73,18 +91,17 @@ const App: React.FC = () => {
         const selectedPath = file as string;
         setModDirPath(selectedPath);
         localStorage.setItem('modDirPath', selectedPath); // Save the path to localStorage
+        fetchMods(); // Fetch mods after selecting the folder
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
     }
   };
 
-
-
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <Header
-        // onAddMod={/* your existing add mod function */}
+        onAddMod={handleDownloadMod}
         onSelectFolder={handleSelectFolder}
       />
       <div className="flex flex-1 overflow-hidden relative">
@@ -109,9 +126,18 @@ const App: React.FC = () => {
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
               </button>
-              <button className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">
-                Sort by
-              </button>
+              <select
+                className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-white"
+                value={sortMethod}
+                onChange={e => setSortMethod(e.target.value)}
+                title="Sort mods"
+              >
+                {sortOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    Sort by {option.label}
+                  </option>
+                ))}
+              </select>
               <button className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">
                 Filter
               </button>
@@ -121,7 +147,7 @@ const App: React.FC = () => {
           {modDirPath ? (
             <ModGrid
               mods={mods}
-              onToggleMod={handleToggleMod}
+              onUpdateMod={handleUpdateMod}
               onModClick={handleModClick}
             />
           ) : (
@@ -140,9 +166,9 @@ const App: React.FC = () => {
         {isPanelOpen && selectedMod && (
           <ModInfoPanel
             mod={selectedMod}
+            isOpen={isPanelOpen}
             onUpdate={handleUpdateMod}
             onClose={handleClosePanel}
-            onToggleMod={handleToggleMod}
           />
         )}
       </div>

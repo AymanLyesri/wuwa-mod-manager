@@ -3,7 +3,7 @@ import { Mod } from '../interfaces/Mod.interface';
 
 interface ModCardProps {
     mod: Mod;
-    onToggle: (mod: Mod, enabled: boolean) => void;
+    onUpdateMod: (mod: Mod) => void;
     onClick: () => void;
 }
 
@@ -41,10 +41,10 @@ const TRANSITIONS = {
     button: 'transition-colors duration-200 ease-out',
 };
 
-const ModCard: React.FC<ModCardProps> = ({ mod, onToggle, onClick }) => {
+const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
     const handleToggle = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onToggle(mod, !mod.enabled);
+        onUpdateMod({ ...mod, enabled: !mod.enabled });
     };
 
     return (
