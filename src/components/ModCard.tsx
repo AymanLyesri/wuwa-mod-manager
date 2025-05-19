@@ -11,28 +11,29 @@ interface ModCardProps {
 // Design tokens organized for maintainability
 const COLORS = {
     background: {
-        base: 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700',
-        hover: 'bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600',
-        imagePlaceholder: 'bg-gradient-to-br from-gray-700 to-gray-600',
+        base: 'bg-gray-300 dark:bg-gray-800',
+        hover: 'hover:bg-gray-50 dark:hover:bg-gray-700',
+        imagePlaceholder: 'bg-gray-200 dark:bg-gray-700',
     },
     border: {
-        base: 'border border-gray-600/50',
-        hover: 'border-gray-500/70',
+        base: 'border border-gray-200 dark:border-gray-700',
+        hover: 'hover:border-gray-300 dark:hover:border-gray-500',
     },
     text: {
-        primary: 'text-white',
-        secondary: 'text-gray-300',
-        tertiary: 'text-gray-400',
-        accent: 'text-green-400',
+        primary: 'text-gray-900 dark:text-white',
+        secondary: 'text-gray-700 dark:text-gray-300',
+        tertiary: 'text-gray-500 dark:text-gray-400',
+        disabled: 'text-gray-400 dark:text-gray-500',
+        error: 'text-red-500 dark:text-red-400',
     },
     button: {
-        enabled: 'bg-green-600 hover:bg-green-700 text-white',
-        disabled: 'bg-gray-600/70 hover:bg-gray-700 text-white',
-        info: 'text-gray-400 hover:text-white',
+        enabled: 'bg-green-500 text-white hover:bg-green-600 dark:bg-green-400 dark:text-gray-900 dark:hover:bg-green-500',
+        disabled: 'bg-gray-300 text-gray-700 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500',
+        info: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
     },
     effects: {
-        glow: 'hover:shadow-[0_0_20px_-5px_rgba(74,222,128,0.6)]',
-        overlay: 'bg-gradient-to-t from-black/80 via-black/30 to-transparent',
+        // glow: 'shadow-lg hover:shadow-xl',
+        // overlay: 'bg-gradient-to-t from-black/50 to-transparent',
     },
 };
 
