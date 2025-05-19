@@ -1,6 +1,6 @@
 // const invoke = window.__TAURI__.invoke;
 
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { Mod } from "../interfaces/Mod.interface";
 
 /**
@@ -11,10 +11,9 @@ import { Mod } from "../interfaces/Mod.interface";
 export const getFolderContents = async (path: string): Promise<Mod[]> => {
     try {
         const contents = await invoke<Mod[]>('get_folder_mods', { path });
-        const timestamp = Date.now()
+
         return contents.map((mod) => ({
             ...mod,
-            thumbnail: mod.thumbnail != '' ? convertFileSrc(mod.thumbnail) + `?t=${timestamp}` : ''
         }))
 
     } catch (error) {

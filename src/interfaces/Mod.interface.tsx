@@ -4,6 +4,7 @@ export interface Mod {
     path: string;
     author: string;
     description: string;
+    character: string;
     version: string;
     thumbnail: string;
     enabled: boolean;

@@ -6,6 +6,7 @@ import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
 import { open } from '@tauri-apps/plugin-dialog';
 import { downloadMod, setModInfo } from './services/mod.service';
+import { Spinner } from './components/Spinner';
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
@@ -18,6 +19,7 @@ const App: React.FC = () => {
     { value: 'name', label: 'Name' },
     { value: 'author', label: 'Author' },
     { value: 'version', label: 'Version' },
+    { value: 'character', label: 'Character' },
   ];
 
   useEffect(() => {
@@ -27,7 +29,14 @@ const App: React.FC = () => {
     if (localStorage.getItem('sortMethod')) {
       setSortMethod(localStorage.getItem('sortMethod') as string);
     }
+    // Removed fetchMods from here
   }, []);
+
+  useEffect(() => {
+    if (modDirPath) {
+      fetchMods();
+    }
+  }, [modDirPath]);
 
   // sort mods based on the selected method based on mod keys
   useEffect(() => {
@@ -104,6 +113,7 @@ const App: React.FC = () => {
         onAddMod={handleDownloadMod}
         onSelectFolder={handleSelectFolder}
       />
+      <Spinner />
       <div className="flex flex-1 overflow-hidden relative">
         <main className={`flex-1 overflow-y-auto`}>
           <div className="mb-6 flex justify-between items-center p-6">

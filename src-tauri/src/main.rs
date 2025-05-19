@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use tauri::command;
 
-use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::fs::{self, File};
 use std::io::{Cursor};
+
+use base64::{Engine as _, engine::general_purpose};
 
 use reqwest;
 use zip::ZipArchive;
@@ -98,7 +100,7 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
 }
 
 #[command]
-fn set_mod_thumbnail(path: String, thumbnail_path: String) -> Result<(), String> {
+fn set_mod_thumbnail(path: String, thumbnail_path: String, base64: String) -> Result<(), String> {
     let mod_dir = Path::new(&path);
     let src_path = Path::new(&thumbnail_path);
 
@@ -106,12 +108,21 @@ fn set_mod_thumbnail(path: String, thumbnail_path: String) -> Result<(), String>
         return Err("Mod directory does not exist".to_string());
     }
 
-    if !src_path.exists() {
-        return Err("Thumbnail file does not exist".to_string());
-    }
-
     let dest_path = mod_dir.join("thumbnail.png");
-    std::fs::copy(src_path, dest_path).map_err(|e| e.to_string())?;
+
+    if !base64.is_empty() {
+        // The frontend now sends clean base64, no need to trim
+        let decoded = general_purpose::STANDARD.decode(&base64).map_err(|e| e.to_string())?;
+        fs::write(&dest_path, decoded).map_err(|e| e.to_string())?;
+    } else if !thumbnail_path.is_empty() {
+        if src_path.exists() && src_path.is_file() {
+            fs::copy(&src_path, &dest_path).map_err(|e| e.to_string())?;
+        } else {
+            return Err("Thumbnail path does not exist".to_string()+src_path.to_str().unwrap());
+        }
+    } else {
+        return Err("No thumbnail provided".to_string());
+    }
 
     Ok(())
 }
@@ -259,6 +270,19 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
     }
+
+    Ok(())
+}
+
+#[command]
+fn delete_mod(path: String) -> Result<(), String> {
+    let mod_dir = Path::new(&path);
+
+    if !mod_dir.exists() || !mod_dir.is_dir() {
+        return Err("Mod directory does not exist".to_string());
+    }
+
+    fs::remove_dir_all(mod_dir).map_err(|e| e.to_string())?;
 
     Ok(())
 }

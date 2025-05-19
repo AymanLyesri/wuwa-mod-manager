@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mod } from '../interfaces/Mod.interface';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 interface ModCardProps {
     mod: Mod;
@@ -61,7 +62,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
                 {mod.thumbnail ? (
                     <>
                         <img
-                            src={mod.thumbnail}
+                            src={convertFileSrc(mod.thumbnail) + "?t=" + Date.now()}
                             alt={mod.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
