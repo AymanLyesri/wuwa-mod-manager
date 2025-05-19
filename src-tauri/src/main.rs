@@ -1,3 +1,8 @@
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
 use serde::{Deserialize, Serialize};
 use tauri::command;
 
@@ -126,9 +131,8 @@ fn set_mod_thumbnail(path: String, thumbnail_path: String, base64: String) -> Re
 
     Ok(())
 }
-
 #[command]
-fn set_mod_info(mod_data: Mod) -> Result<(), String> {
+fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
     let mod_dir = Path::new(&mod_data.path);
 
     if !mod_dir.exists() || !mod_dir.is_dir() {
@@ -137,9 +141,9 @@ fn set_mod_info(mod_data: Mod) -> Result<(), String> {
 
     let details = ModJson {
         name: mod_data.name.clone(),
-        author: mod_data.author,
-        version: mod_data.version,
-        description: mod_data.description,
+        author: mod_data.author.clone(),
+        version: mod_data.version.clone(),
+        description: mod_data.description.clone(),
     };
 
     let details_path = mod_dir.join("mod.json");
@@ -157,14 +161,56 @@ fn set_mod_info(mod_data: Mod) -> Result<(), String> {
         format!("disabled {}", mod_data.name)
     };
 
+    let mut new_mod_dir = mod_dir.to_path_buf();
+
     if current_name != desired_name {
         if let Some(parent) = mod_dir.parent() {
             let new_path = parent.join(&desired_name);
-            std::fs::rename(mod_dir, new_path).map_err(|e| e.to_string())?;
+            std::fs::rename(mod_dir, &new_path).map_err(|e| e.to_string())?;
+            new_mod_dir = new_path;
         }
     }
 
-    Ok(())
+    // Rebuild the Mod struct to return the updated info
+    let thumbnail_path = new_mod_dir.join("thumbnail.png");
+    let thumbnail = if thumbnail_path.exists() {
+        thumbnail_path.to_string_lossy().to_string()
+    } else {
+        String::new()
+    };
+
+    let mod_json_path = new_mod_dir.join("mod.json");
+    let details = if mod_json_path.exists() {
+        match std::fs::read_to_string(&mod_json_path) {
+            Ok(contents) => serde_json::from_str::<ModJson>(&contents).unwrap_or_default(),
+            Err(_) => ModJson::default(),
+        }
+    } else {
+        ModJson::default()
+    };
+
+    let name = if !details.name.is_empty() {
+        details.name
+    } else {
+        desired_name
+    };
+
+    let id = new_mod_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_string();
+
+    Ok(Mod {
+        id,
+        name,
+        path: new_mod_dir.to_string_lossy().to_string(),
+        author: details.author,
+        description: details.description,
+        version: details.version,
+        thumbnail,
+        enabled: mod_data.enabled,
+    })
 }
 
 #[command]

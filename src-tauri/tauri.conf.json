@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "wuwa_mod_manager",
+  "productName": "WuwaMoMa",
   "version": "0.1.0",
-  "identifier": "com.wuwa_mod_manager.app",
+  "identifier": "com.WuwaMoMa.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "wuwa_mod_manager",
+        "title": "WuwaMoMa",
         "width": 800,
         "height": 600
       }

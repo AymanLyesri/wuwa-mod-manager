@@ -67,8 +67,8 @@ const App: React.FC = () => {
     setIsPanelOpen(true);
   };
 
-  const handleUpdateMod = (updatedMod: Mod) => {
-    setModInfo(updatedMod);
+  const handleUpdateMod = async (updatedMod: Mod) => {
+    updatedMod = await setModInfo(updatedMod);
     setSelectedMod(updatedMod);
     fetchMods();
   };

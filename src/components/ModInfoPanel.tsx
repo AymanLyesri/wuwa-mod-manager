@@ -7,25 +7,25 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 // Design tokens - moved to separate constants file would be even better
 const COLORS = {
     background: {
-        panel: 'bg-gradient-to-b from-gray-800 to-gray-900',
-        input: 'bg-gray-700 hover:bg-gray-600 focus:bg-gray-600',
+        panel: 'bg-gradient-to-b from-gray-300 to-gray-200 dark:bg-gradient-to-b dark:from-gray-800 dark:to-gray-900 bg-gradient-to-b from-gray-100 to-gray-200',
+        input: 'bg-gray-400 hover:bg-gray-500 focus:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:bg-gray-600 bg-gray-200 hover:bg-gray-300 focus:bg-gray-300',
         button: {
-            primary: 'bg-blue-600 hover:bg-blue-500',
-            secondary: 'bg-gray-700 hover:bg-gray-600',
+            primary: 'bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 bg-blue-500 hover:bg-blue-400',
+            secondary: 'bg-gray-700 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 bg-gray-300 hover:bg-gray-400',
             toggle: {
-                enabled: 'bg-green-600 hover:bg-green-500',
-                disabled: 'bg-gray-700 hover:bg-gray-600',
+                enabled: 'bg-green-500 text-white hover:bg-green-600 dark:text-gray-900 dark:hover:bg-green-500',
+                disabled: 'bg-gray-300 text-gray-700 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500',
             },
         },
     },
     text: {
-        primary: 'text-white',
-        secondary: 'text-gray-300',
-        label: 'text-gray-400',
+        primary: 'text-white dark:text-white text-gray-900',
+        secondary: 'text-gray-300 dark:text-gray-300 text-gray-700',
+        label: 'text-gray-400 dark:text-gray-400 text-gray-600',
     },
     border: {
-        panel: 'border-l border-gray-700',
-        image: 'border-2 border-gray-700 hover:border-blue-500',
+        panel: 'border-l border-white dark:border-gray-700 border-gray-300',
+        image: 'border-2 border-white hover:border-blue-500 dark:border-gray-700 dark:hover:border-blue-500 border-gray-300 hover:border-blue-400',
     },
     shadow: {
         panel: 'shadow-xl',
@@ -56,16 +56,17 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     const [focusedMod, setFocusedMod] = useState<Mod>(mod);
     const [thumbnailPath, setThumbnailPath] = useState<string>('');
     const [thumbnailBase64, setThumbnailBase64] = useState<string>('');
+    const [displayThumbnail, setDisplayThumbnail] = useState<string>('');
     const thumbnailRefZone = useRef<HTMLDivElement>(null);
 
+    // Sync with parent mod changes
     useEffect(() => {
+        setFocusedMod(mod);
+        setDisplayThumbnail(mod.thumbnail ? convertFileSrc(mod.thumbnail) : '');
         if (isOpen && thumbnailRefZone.current) {
             thumbnailRefZone.current.focus();
         }
-    }, [isOpen]);
-
-    // Sync with parent mod changes
-    useEffect(() => setFocusedMod(mod), [mod]);
+    }, [mod]);
 
     // Generic input handler for all form fields
     const handleChange = useCallback(
@@ -88,21 +89,27 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 setModThumbnail({ mod: focusedMod, base64: thumbnailBase64 });
             }
             onUpdate(focusedMod);
+            // Reset thumbnailPath and thumbnailBase64 after submit
+            setThumbnailPath('');
+            setThumbnailBase64('');
         },
-        [focusedMod, onUpdate, thumbnailPath]
+        [focusedMod, onUpdate, thumbnailPath, thumbnailBase64]
     );
 
     const handleImage = useCallback(async (file: File | string) => {
         try {
             if (typeof file === 'string') {
                 setThumbnailPath(file);
-                setFocusedMod(prev => ({ ...prev, thumbnail: file }));
+                setDisplayThumbnail(convertFileSrc(file));
+                console.log('File path:', file);
+
             } else {
                 const reader = new FileReader();
                 reader.onload = () => {
                     const result = reader.result as string;
                     setThumbnailBase64(result.replace(/^data:image\/\w+;base64,/, '') || '');
-                    setFocusedMod(prev => ({ ...prev, thumbnail: result }));
+                    console.log('Base64:', result);
+                    setDisplayThumbnail(result);
                 };
                 reader.readAsDataURL(file);
             }
@@ -142,6 +149,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
 
     // Paste handler
     const handlePaste = useCallback(
+
         (e: React.ClipboardEvent<HTMLDivElement>) => {
             const file = e.clipboardData.files?.[0] ||
                 Array.from(e.clipboardData.items)
@@ -189,17 +197,20 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                     {/* Thumbnail display area - only shows image and handles drag/paste */}
                     <div
                         ref={thumbnailRefZone}
-                        className={`w-full aspect-video rounded-xl overflow-hidden ${COLORS.border.image} ${COLORS.shadow.image} ${TRANSITIONS.image}`}
+                        className={`w-full z-10 aspect-video rounded-xl overflow-hidden ${COLORS.border.image} ${COLORS.shadow.image} ${TRANSITIONS.image}`}
                         onDrop={handleDrop}
                         onDragOver={handleDragOver}
                         onPaste={handlePaste}
                         title="Drag or paste image to change"
+                        tabIndex={0}  // Make the div focusable
+                        onClick={() => thumbnailRefZone.current?.focus()}  // Focus on click
                     >
-                        {focusedMod.thumbnail ? (
+                        {displayThumbnail ? (
                             <img
-                                src={convertFileSrc(focusedMod.thumbnail)}
-                                alt={focusedMod.name}
+                                src={displayThumbnail}
                                 className="w-full h-full object-cover"
+                                onDragOver={handleDragOver}  // Propagate drag events to parent
+                                onDrop={handleDrop}          // Propagate drop events to parent
                             />
                         ) : (
                             <div className={`w-full h-full flex flex-col items-center justify-center ${COLORS.background.input}`}>

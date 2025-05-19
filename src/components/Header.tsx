@@ -39,7 +39,7 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
 
     return (
         <header className="bg-white dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 p-4 sticky top-0 z-50 transition-colors duration-200">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                 {/* Logo/Title */}
                 <div className="group flex items-center">
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-600 dark:from-cyan-400 dark:to-purple-500 bg-clip-text text-transparent">
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
                     </button>
 
                     {/* Actions */}
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <button
                             onClick={onSelectFolder}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/90 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
@@ -91,13 +91,13 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
                                 <span>Add Mod</span>
                             </button>
                         ) : (
-                            <div className="flex gap-2 w-full">
+                            <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={modUrl}
                                     onChange={(e) => setModUrl(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddMod()}
-                                    placeholder="Paste mod URL..."
+                                    placeholder="mod URL (download/file)"
                                     className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                                     autoFocus
                                 />

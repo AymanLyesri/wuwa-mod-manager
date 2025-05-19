@@ -2,9 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { Mod } from "../interfaces/Mod.interface";
 import { useAsyncLoadingHook } from "../hooks/loadingHook";
 
-export const setModInfo = async (mod: Mod) => {
+export const setModInfo = async (mod: Mod): Promise<Mod> => {
     try {
-        const result = await invoke('set_mod_info', { modData: mod });
+        const result: Mod = await invoke('set_mod_info', { modData: mod });
         return result;
     } catch (error) {
         console.error('Error setting mod details:', error);

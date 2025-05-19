@@ -27,7 +27,7 @@ const COLORS = {
         error: 'text-red-500 dark:text-red-400',
     },
     button: {
-        enabled: 'bg-green-500 text-white hover:bg-green-600 dark:bg-green-400 dark:text-gray-900 dark:hover:bg-green-500',
+        enabled: 'bg-green-500 text-white hover:bg-green-600 dark:text-gray-900 dark:hover:bg-green-500',
         disabled: 'bg-gray-300 text-gray-700 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500',
         info: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
     },
@@ -53,7 +53,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
         <div
             className={`relative ${COLORS.background.base} ${COLORS.border.base} 
                 rounded-xl shadow-lg overflow-hidden ${TRANSITIONS.base} 
-                ${TRANSITIONS.hoverScale} ${COLORS.effects.glow} 
+                ${TRANSITIONS.hoverScale} 
                 hover:${COLORS.background.hover} hover:${COLORS.border.hover}
                 group cursor-pointer will-change-transform`}
             onClick={onClick}
@@ -91,7 +91,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
             </div>
 
             {/* Content overlay */}
-            <div className={`absolute inset-0 ${COLORS.effects.overlay} opacity-0 group-hover:opacity-100 ${TRANSITIONS.base} pointer-events-none`} />
+            <div className={`absolute inset-0  opacity-0 group-hover:opacity-100 ${TRANSITIONS.base} pointer-events-none`} />
 
             {/* Content */}
             <div className="relative p-5 z-10">
@@ -124,8 +124,8 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
                         {mod.enabled ? (
                             <>
                                 <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-700 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                                 </span>
                                 Enabled
                             </>
