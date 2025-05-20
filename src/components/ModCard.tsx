@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mod } from '../interfaces/Mod.interface';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import StatusButton from './StatusButton';
 
 interface ModCardProps {
     mod: Mod;
@@ -11,24 +12,24 @@ interface ModCardProps {
 // Design tokens organized for maintainability
 const COLORS = {
     background: {
-        base: 'bg-gray-300 dark:bg-gray-800',
-        hover: 'hover:bg-gray-50 dark:hover:bg-gray-700',
-        imagePlaceholder: 'bg-gray-200 dark:bg-gray-700',
+        base: 'bg-neutral-300 dark:bg-neutral-800',
+        hover: 'hover:bg-neutral-50 dark:hover:bg-neutral-700',
+        imagePlaceholder: 'bg-neutral-200 dark:bg-neutral-700',
     },
     border: {
-        base: 'border border-gray-200 dark:border-gray-700',
-        hover: 'hover:border-gray-300 dark:hover:border-gray-500',
+        base: 'border border-neutral-200 dark:border-neutral-700',
+        hover: 'hover:border-neutral-300 dark:hover:border-neutral-500',
     },
     text: {
-        primary: 'text-gray-900 dark:text-white',
-        secondary: 'text-gray-700 dark:text-gray-300',
-        tertiary: 'text-gray-500 dark:text-gray-400',
-        disabled: 'text-gray-400 dark:text-gray-500',
+        primary: 'text-neutral-900 dark:text-white',
+        secondary: 'text-neutral-700 dark:text-neutral-300',
+        tertiary: 'text-neutral-500 dark:text-neutral-400',
+        disabled: 'text-neutral-400 dark:text-neutral-500',
         error: 'text-red-500 dark:text-red-400',
     },
     button: {
-        enabled: 'bg-green-500 text-white hover:bg-green-600 dark:text-gray-900 dark:hover:bg-green-500',
-        disabled: 'bg-gray-300 text-gray-700 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500',
+        enabled: 'bg-green-500 text-white hover:bg-green-600 dark:text-neutral-900 dark:hover:bg-green-500',
+        disabled: 'bg-neutral-300 text-neutral-700 hover:bg-neutral-400 dark:bg-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-500',
         info: 'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
     },
     effects: {
@@ -73,7 +74,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
                 ) : (
                     <div className={`w-full h-full ${COLORS.background.imagePlaceholder} flex items-center justify-center`}>
                         <svg
-                            className="w-12 h-12 text-gray-500"
+                            className="w-12 h-12 text-neutral-500"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -104,7 +105,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
                             by {mod.author}
                         </p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${mod.enabled ? 'bg-green-900/40 text-green-300' : 'bg-gray-700/60 text-gray-400'}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${mod.enabled ? 'bg-green-900/40 text-green-300' : 'bg-neutral-700/60 text-neutral-400'}`}>
                         v{mod.version}
                     </span>
                 </div>
@@ -115,24 +116,9 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
 
                 {/* Buttons */}
                 <div className="flex justify-between items-center">
-                    <button
-                        onClick={handleToggle}
-                        className={`px-4 py-2 rounded-full text-sm font-semibold ${TRANSITIONS.button} 
-                            ${mod.enabled ? COLORS.button.enabled : COLORS.button.disabled}
-                            flex items-center gap-2`}
-                    >
-                        {mod.enabled ? (
-                            <>
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-700 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                                </span>
-                                Enabled
-                            </>
-                        ) : (
-                            'Disabled'
-                        )}
-                    </button>
+                    <StatusButton
+                        mod={mod}
+                        onClick={handleToggle} />
 
                     <button
                         className={`text-xs font-medium ${COLORS.button.info} ${TRANSITIONS.button} 

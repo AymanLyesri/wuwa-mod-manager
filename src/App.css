@@ -1,3 +1,54 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+    .scrollbar {
+        --scrollbar-track: theme('colors.neutral.100');
+        --scrollbar-thumb: theme('colors.neutral.300');
+        --scrollbar-thumb-hover: theme('colors.neutral.400');
+    }
+
+    .dark {
+        --scrollbar-track: theme('colors.neutral.800');
+        --scrollbar-thumb: theme('colors.neutral.600');
+        --scrollbar-thumb-hover: theme('colors.neutral.500');
+    }
+
+    .scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+
+    .scrollbar::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+
+    .scrollbar::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 6px;
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 6px;
+        border: 3px solid var(--scrollbar-track);
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+    }
+}
+
+/* .modgrid-header {
+    transition: margin 0.2s;
+}
+
+.modgrid-header.sticky {
+    margin: 0 !important;
+} */

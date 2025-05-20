@@ -2,16 +2,20 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-
 use serde::{Deserialize, Serialize};
 use tauri::command;
 
-use std::path::{Path, PathBuf};
 use std::fs::{self, File};
-use std::io::{Cursor};
+use std::io::Cursor;
+use std::path::{Path, PathBuf};
 
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 
+use enigo::{
+    Direction::{Press, Release},
+    Enigo, Key, Keyboard, Settings,
+};
+use regex::Regex;
 use reqwest;
 use zip::ZipArchive;
 
@@ -19,21 +23,28 @@ use zip::ZipArchive;
 #[serde(rename_all = "camelCase")]
 pub struct Mod {
     pub id: String,
-    pub name: String,
-    pub path: String,
+
+    // stored
     pub author: String,
     pub description: String,
     pub version: String,
+    pub category: String,
+    pub url: String,
+
+    // not json stored
+    pub name: String,
+    pub path: String,
     pub thumbnail: String,
     pub enabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct ModJson {
-    name: String,
     author: String,
-    version: String,
     description: String,
+    version: String,
+    category: String,
+    url: String,
 }
 #[command]
 fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
@@ -42,6 +53,10 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
     if !dir.exists() || !dir.is_dir() {
         return Err("Invalid directory path".to_string());
     }
+
+    // Regex to extract version from folder name (e.g., "mod_v1.0")
+    // This regex captures the version number in the format "vX.X" or ".X.X"
+    let version_regex = Regex::new(r"(?i)v?\.?(\d+\.\d+)").unwrap();
 
     let mut mods = Vec::new();
 
@@ -58,13 +73,12 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
             .and_then(|n| n.to_str())
             .unwrap_or("")
             .to_string();
+
         let (enabled, display_name) = if name.starts_with("disabled ") {
             (false, name["disabled ".len()..].to_string())
         } else {
             (true, name.clone())
         };
-
-        let id = name.clone(); // using folder name as ID
 
         let thumbnail_path = path.join("thumbnail.png");
         let thumbnail = if thumbnail_path.exists() {
@@ -83,19 +97,35 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
             ModJson::default()
         };
 
-        let name = if !details.name.is_empty() {
-            details.name
+        // Extract version from folder name if not available in mod.json
+        let version = if !details.version.is_empty() {
+            details.version
         } else {
-            display_name
+            version_regex
+                .captures(&name)
+                .and_then(|cap| cap.get(1))
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_else(|| "".to_string())
         };
+
+        let id = name.clone(); // using folder name as ID
+        let name = display_name.clone();
+
+        // Get category and url from mod.json, fallback to empty string if not present
+        let author = details.author;
+        let description = details.description;
+        let category = details.category;
+        let url = details.url;
 
         mods.push(Mod {
             id,
             name,
             path: path.to_string_lossy().to_string(),
-            author: details.author,
-            description: details.description,
-            version: details.version,
+            author,
+            description,
+            version,
+            category,
+            url,
             thumbnail,
             enabled,
         });
@@ -117,13 +147,15 @@ fn set_mod_thumbnail(path: String, thumbnail_path: String, base64: String) -> Re
 
     if !base64.is_empty() {
         // The frontend now sends clean base64, no need to trim
-        let decoded = general_purpose::STANDARD.decode(&base64).map_err(|e| e.to_string())?;
+        let decoded = general_purpose::STANDARD
+            .decode(&base64)
+            .map_err(|e| e.to_string())?;
         fs::write(&dest_path, decoded).map_err(|e| e.to_string())?;
     } else if !thumbnail_path.is_empty() {
         if src_path.exists() && src_path.is_file() {
             fs::copy(&src_path, &dest_path).map_err(|e| e.to_string())?;
         } else {
-            return Err("Thumbnail path does not exist".to_string()+src_path.to_str().unwrap());
+            return Err("Thumbnail path does not exist".to_string() + src_path.to_str().unwrap());
         }
     } else {
         return Err("No thumbnail provided".to_string());
@@ -140,10 +172,11 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
     }
 
     let details = ModJson {
-        name: mod_data.name.clone(),
         author: mod_data.author.clone(),
         version: mod_data.version.clone(),
         description: mod_data.description.clone(),
+        category: mod_data.category.clone(),
+        url: mod_data.url.clone(),
     };
 
     let details_path = mod_dir.join("mod.json");
@@ -155,17 +188,19 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
         None => return Err("Invalid mod directory name".to_string()),
     };
 
-    let desired_name = if mod_data.enabled {
-        mod_data.name.clone()
-    } else {
-        format!("disabled {}", mod_data.name)
-    };
+    // Use the new name from mod_data, with "disabled " prefix if needed
+    let mut new_name = mod_data.name.clone();
+    if !mod_data.enabled {
+        if !new_name.starts_with("disabled ") {
+            new_name = format!("disabled {}", new_name);
+        }
+    }
 
     let mut new_mod_dir = mod_dir.to_path_buf();
 
-    if current_name != desired_name {
+    if current_name != new_name {
         if let Some(parent) = mod_dir.parent() {
-            let new_path = parent.join(&desired_name);
+            let new_path = parent.join(&new_name);
             std::fs::rename(mod_dir, &new_path).map_err(|e| e.to_string())?;
             new_mod_dir = new_path;
         }
@@ -189,12 +224,6 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
         ModJson::default()
     };
 
-    let name = if !details.name.is_empty() {
-        details.name
-    } else {
-        desired_name
-    };
-
     let id = new_mod_dir
         .file_name()
         .and_then(|n| n.to_str())
@@ -203,11 +232,13 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
 
     Ok(Mod {
         id,
-        name,
+        name: mod_data.name,
         path: new_mod_dir.to_string_lossy().to_string(),
         author: details.author,
         description: details.description,
         version: details.version,
+        category: details.category,
+        url: details.url,
         thumbnail,
         enabled: mod_data.enabled,
     })
@@ -215,7 +246,7 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
 
 #[command]
 async fn download_mod(url: String, to: String) -> Result<(), String> {
-     // 1. Download with timeout and size limits
+    // 1. Download with timeout and size limits
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -240,7 +271,11 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to read response: {}", e))?;
 
     if bytes.len() > MAX_SIZE {
-        return Err(format!("File too large ({} > {} bytes)", bytes.len(), MAX_SIZE));
+        return Err(format!(
+            "File too large ({} > {} bytes)",
+            bytes.len(),
+            MAX_SIZE
+        ));
     }
 
     // 4. Validate ZIP structure before processing
@@ -276,11 +311,12 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
 
     // Determine extraction directory
     let extraction_dir = if has_single_root_folder {
-        PathBuf::from(&to)  // Extract directly into 'to'
+        PathBuf::from(&to) // Extract directly into 'to'
     } else {
         // Generate a folder name based on contents (e.g., first few file names)
         let mut name_parts = Vec::new();
-        for i in 0..std::cmp::min(archive.len(), 3) { // Check up to 3 files
+        for i in 0..std::cmp::min(archive.len(), 3) {
+            // Check up to 3 files
             let file = archive.by_index(i).map_err(|e| e.to_string())?;
             let file_name = Path::new(file.name())
                 .file_name()
@@ -317,9 +353,22 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
         }
     }
 
+    // --- Add or update mod.json with the url ---
+    let mod_json_path = extraction_dir.join("mod.json");
+    let mut mod_json: ModJson = if mod_json_path.exists() {
+        match std::fs::read_to_string(&mod_json_path) {
+            Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
+            Err(_) => ModJson::default(),
+        }
+    } else {
+        ModJson::default()
+    };
+    mod_json.url = url.clone();
+    let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
+    std::fs::write(mod_json_path, json).map_err(|e| e.to_string())?;
+
     Ok(())
 }
-
 #[command]
 fn delete_mod(path: String) -> Result<(), String> {
     let mod_dir = Path::new(&path);
@@ -333,6 +382,14 @@ fn delete_mod(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[command]
+fn send_f10() {
+    let mut enigo = Enigo::new(&Settings::default()).unwrap();
+
+    enigo.key(Key::F10, Press).unwrap();
+    enigo.key(Key::F10, Release).unwrap();
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -342,6 +399,8 @@ fn main() {
             set_mod_thumbnail,
             set_mod_info,
             download_mod,
+            delete_mod,
+            send_f10,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
