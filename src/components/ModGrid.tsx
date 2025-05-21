@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import ModCard from './ModCard';
 import { Mod } from '../interfaces/Mod.interface';
+import { STYLE, TRANSITIONS } from '../constants/styling.constant';
+import { motion } from 'framer-motion';
+import FilterMods from './Filter';
 
 interface ModGridProps {
     mods: Mod[];
@@ -23,6 +26,7 @@ const ModGrid: React.FC<ModGridProps> = ({
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [sortMethod, setSortMethod] = useState<string>(localStorage.getItem('sortMethod') || 'name');
     const [sortedMods, setSortedMods] = useState<Mod[]>([]);
+    const [filteredMods, setFilteredMods] = useState(mods); // full mods list
 
 
     const sortOptions = [
@@ -33,10 +37,10 @@ const ModGrid: React.FC<ModGridProps> = ({
     ];
 
     useEffect(() => {
-        const sortedMods = sortMods([...mods], sortMethod);
+        const sortedMods = sortMods([...filteredMods], sortMethod);
         localStorage.setItem('sortMethod', sortMethod);
         setSortedMods(sortedMods);
-    }, [sortMethod, mods]);
+    }, [sortMethod, mods, filteredMods]);
 
 
     const toggleModSelection = (mod: Mod) => {
@@ -78,35 +82,36 @@ const ModGrid: React.FC<ModGridProps> = ({
     return (
         <div className="space-y-6">
             {/* Header Section */}
-            <div className="modgrid-header bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 m-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4 sticky top-0 z-10">
+            <div className={`${STYLE.panel} sticky top-0 z-10 m-0 lg:m-6 flex flex-col gap-4 lg:flex-row md:items-center md:justify-between`}>
                 {/* Title and Stats Section */}
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-bold tracking-tight">
+                    <h2 className={`${STYLE.text.heading}`}>
                         Installed Mods
                     </h2>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <div className="flex items-center space-x-1">
+                        {/* Mod Count */}
+                        <div className={`${STYLE.text.label} flex items-center gap-1`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                             </svg>
-                            <span>
-                                <span className="font-medium">{mods.length}</span> mods installed
-                            </span>
+                            <span>{mods.length} mods installed</span>
                         </div>
-                        <div className="flex items-center space-x-1">
+
+                        {/* Enabled Count */}
+                        <div className={`${STYLE.text.label} flex items-center gap-1`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            <span>
-                                <span className="font-medium">{mods.filter(m => m.enabled).length}</span> enabled
-                            </span>
+                            <span>{mods.filter(m => m.enabled).length} enabled</span>
                         </div>
+
+                        {/* Mod Directory Path */}
                         {modDirPath && (
-                            <div className="flex items-center space-x-1 text-sm">
+                            <div className={`${STYLE.text.label} flex items-center gap-1`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
                                 </svg>
-                                <span className="truncate max-w-[180px] sm:max-w-xs" title={modDirPath}>
+                                <span className="truncate max-w-[120px] xs:max-w-[180px] sm:max-w-xs" title={modDirPath}>
                                     {modDirPath}
                                 </span>
                             </div>
@@ -116,23 +121,23 @@ const ModGrid: React.FC<ModGridProps> = ({
 
                 {/* Action Buttons Section */}
                 <div className="flex flex-wrap gap-2 justify-end">
+                    {/* Refresh Button */}
                     <button
-                        className="p-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm group"
+                        className={`p-2 rounded-lg ${TRANSITIONS.interactive} hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:shadow-md`}
                         onClick={fetchMods}
                         title="Refresh mods"
-                        aria-label="Refresh mods"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                         </svg>
                     </button>
 
-                    <div className="relative group">
+                    {/* Sort Dropdown */}
+                    <div className="relative">
                         <select
-                            className="pl-3 pr-8 py-2 rounded-lg transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                            className={`${STYLE.select} min-w-[120px]`}
                             value={sortMethod}
                             onChange={e => setSortMethod(e.target.value)}
-                            title="Sort mods"
                         >
                             {sortOptions.map(option => (
                                 <option key={option.value} value={option.value}>
@@ -142,22 +147,14 @@ const ModGrid: React.FC<ModGridProps> = ({
                         </select>
                     </div>
 
-                    <button
-                        className="flex items-center space-x-1 px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-                        </svg>
-                        <span>Filter</span>
-                    </button>
+                    <div className="p-4">
+                        <FilterMods mods={mods} onFilter={setFilteredMods} />
+                    </div>
 
-                    {/* Select Mode Toggle Button */}
+                    {/* Select Mode Toggle */}
                     <button
                         onClick={toggleSelectMode}
-                        className={`px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm flex items-center space-x-1 ${isSelectMode
-                            ? 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
-                            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                            }`}
+                        className={`${STYLE.button.secondary} flex items-center gap-1`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -165,11 +162,11 @@ const ModGrid: React.FC<ModGridProps> = ({
                         <span>{isSelectMode ? 'Cancel' : 'Select'}</span>
                     </button>
 
-                    {/* Delete Selected Button (visible when in select mode) */}
+                    {/* Delete Selected (when in select mode) */}
                     {isSelectMode && selectedMods.length > 0 && (
                         <button
                             onClick={handleDeleteSelected}
-                            className="px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 hover:scale-105 active:scale-95 flex items-center space-x-1"
+                            className={`${STYLE.button.primary} bg-rose-500 hover:bg-rose-600 flex items-center gap-1`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -183,8 +180,12 @@ const ModGrid: React.FC<ModGridProps> = ({
             {/* Mod Grid */}
             <div className="grid [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))] gap-6 p-6">
                 {sortedMods.map((mod) => (
-                    <div
-                        key={mod.id}
+
+                    <motion.div
+                        // key={mod.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
                         className={`relative transition-all duration-200 ${selectedMods.includes(mod) ? 'ring-2 ring-blue-500 scale-[0.98]' : ''}`}
                         onClick={() => isSelectMode && toggleModSelection(mod)}
                     >
@@ -205,7 +206,7 @@ const ModGrid: React.FC<ModGridProps> = ({
                             onClick={() => !isSelectMode && onModClick(mod)}
                         // className={selectedMods.includes(mod.id) ? 'opacity-90' : ''}
                         />
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
