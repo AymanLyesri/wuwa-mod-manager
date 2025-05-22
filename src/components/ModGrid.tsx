@@ -24,23 +24,11 @@ const ModGrid: React.FC<ModGridProps> = ({
 }) => {
     const [selectedMods, setSelectedMods] = useState<Mod[]>([]);
     const [isSelectMode, setIsSelectMode] = useState(false);
-    const [sortMethod, setSortMethod] = useState<string>(localStorage.getItem('sortMethod') || 'name');
-    const [sortedMods, setSortedMods] = useState<Mod[]>([]);
-    const [filteredMods, setFilteredMods] = useState(mods); // full mods list
-
-
-    const sortOptions = [
-        { value: 'name', label: 'Name' },
-        { value: 'author', label: 'Author' },
-        { value: 'version', label: 'Version' },
-        { value: 'character', label: 'Character' },
-    ];
+    const [filteredMods, setFilteredMods] = useState<Mod[]>([]); // full mods list
 
     useEffect(() => {
-        const sortedMods = sortMods([...filteredMods], sortMethod);
-        localStorage.setItem('sortMethod', sortMethod);
-        setSortedMods(sortedMods);
-    }, [sortMethod, mods, filteredMods]);
+        setFilteredMods(mods);
+    }, [mods]);
 
 
     const toggleModSelection = (mod: Mod) => {
@@ -49,20 +37,6 @@ const ModGrid: React.FC<ModGridProps> = ({
         } else {
             setSelectedMods([...selectedMods, mod]);
         }
-    };
-
-    const sortMods = (mods: Mod[], method: string) => {
-        return mods.sort((a, b) => {
-            if (method === 'name') {
-                return a.name.localeCompare(b.name);
-            } else if (method === 'author') {
-                return a.author.localeCompare(b.author);
-            } else if (method === 'version') {
-                // reverse the order of version comparison
-                return b.version.localeCompare(a.version);
-            }
-            return 0;
-        });
     };
 
 
@@ -132,20 +106,6 @@ const ModGrid: React.FC<ModGridProps> = ({
                         </svg>
                     </button>
 
-                    {/* Sort Dropdown */}
-                    <div className="relative">
-                        <select
-                            className={`${STYLE.select} min-w-[120px]`}
-                            value={sortMethod}
-                            onChange={e => setSortMethod(e.target.value)}
-                        >
-                            {sortOptions.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
 
                     <div className="p-4">
                         <FilterMods mods={mods} onFilter={setFilteredMods} />
@@ -179,10 +139,9 @@ const ModGrid: React.FC<ModGridProps> = ({
 
             {/* Mod Grid */}
             <div className="grid [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))] gap-6 p-6">
-                {sortedMods.map((mod) => (
-
+                {filteredMods.map((mod) => (
                     <motion.div
-                        // key={mod.id}
+                        key={mod.id}
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -204,7 +163,7 @@ const ModGrid: React.FC<ModGridProps> = ({
                             mod={mod}
                             onUpdateMod={onUpdateMod}
                             onClick={() => !isSelectMode && onModClick(mod)}
-                        // className={selectedMods.includes(mod.id) ? 'opacity-90' : ''}
+
                         />
                     </motion.div>
                 ))}

@@ -5,8 +5,9 @@
 use serde::{Deserialize, Serialize};
 use tauri::command;
 
+use std::collections::HashSet;
 use std::fs::{self, File};
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
 use base64::{engine::general_purpose, Engine as _};
@@ -16,7 +17,7 @@ use enigo::{
     Enigo, Key, Keyboard, Settings,
 };
 use regex::Regex;
-use reqwest;
+use reqwest::{self, Client};
 use zip::ZipArchive;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -246,129 +247,107 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
 
 #[command]
 async fn download_mod(url: String, to: String) -> Result<(), String> {
-    // 1. Download with timeout and size limits
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+    const TIMEOUT_SECS: u64 = 120; // 2 minutes
+    const MAX_SIZE: usize = 100 * 1024 * 1024; // 100 MB
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(TIMEOUT_SECS))
         .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+        .map_err(|e| format!("HTTP client error: {e}"))?;
 
     let response = client
         .get(&url)
+        .header("Accept-Encoding", "identity")
         .send()
         .await
-        .map_err(|e| format!("Failed to download: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
-    // 2. Verify response status
     if !response.status().is_success() {
-        return Err(format!("HTTP error: {}", response.status()));
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "HTTP {}: {}\nBody: {}",
+            status,
+            status.canonical_reason().unwrap_or(""),
+            body
+        ));
     }
 
-    // 3. Read with size limit (e.g., 100MB)
-    const MAX_SIZE: usize = 100 * 1024 * 1024;
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+        .map_err(|e| format!("Error reading body: {e}"))?;
 
     if bytes.len() > MAX_SIZE {
         return Err(format!(
-            "File too large ({} > {} bytes)",
+            "File too large: {} > {} bytes",
             bytes.len(),
             MAX_SIZE
         ));
     }
 
-    // 4. Validate ZIP structure before processing
-    let cursor = Cursor::new(bytes);
-    let mut archive = match ZipArchive::new(cursor) {
-        Ok(archive) => archive,
-        Err(e) => {
-            return Err(format!(
-                "Invalid ZIP archive: {}. Possible causes: \
-                1) File is corrupted \
-                2) Not a ZIP file \
-                3) Download was interrupted",
-                e
-            ))
-        }
-    };
+    let mut cursor = Cursor::new(&bytes);
+    let mut magic = [0; 4];
+    cursor
+        .read_exact(&mut magic)
+        .map_err(|_| "Failed to read magic bytes")?;
+    if magic != [0x50, 0x4B, 0x03, 0x04] {
+        return Err("Not a valid ZIP file (missing PK header)".to_string());
+    }
 
-    // Check if all entries are inside a single root folder
-    let has_single_root_folder = {
-        let mut root_dirs = std::collections::HashSet::new();
-        for i in 0..archive.len() {
-            let file = archive.by_index(i).map_err(|e| e.to_string())?;
-            let path = PathBuf::from(file.name());
-            if let Some(first_component) = path.components().next() {
-                root_dirs.insert(first_component.as_os_str().to_owned());
-            }
-            if root_dirs.len() > 1 {
-                break; // Multiple root folders/files → needs wrapping
-            }
-        }
-        root_dirs.len() == 1
-    };
+    let mut archive =
+        ZipArchive::new(Cursor::new(&bytes)).map_err(|e| format!("Failed to open ZIP: {e}"))?;
 
-    // Determine extraction directory
-    let extraction_dir = if has_single_root_folder {
-        PathBuf::from(&to) // Extract directly into 'to'
+    let mut root_dirs = HashSet::new();
+    for i in 0..archive.len() {
+        let file = archive.by_index(i).map_err(|e| e.to_string())?;
+        if let Some(component) = Path::new(file.name()).components().next() {
+            root_dirs.insert(component.as_os_str().to_owned());
+        }
+        if root_dirs.len() > 1 {
+            break;
+        }
+    }
+
+    let extract_to = if root_dirs.len() == 1 {
+        PathBuf::from(&to)
     } else {
-        // Generate a folder name based on contents (e.g., first few file names)
-        let mut name_parts = Vec::new();
-        for i in 0..std::cmp::min(archive.len(), 3) {
-            // Check up to 3 files
-            let file = archive.by_index(i).map_err(|e| e.to_string())?;
-            let file_name = Path::new(file.name())
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
-            if !file_name.is_empty() {
-                name_parts.push(file_name.to_string());
-            }
-        }
-        let wrapper_name = if !name_parts.is_empty() {
-            format!("mod_{}", name_parts.join("_"))
-        } else {
-            "extracted_mod".to_string()
-        };
-        PathBuf::from(&to).join(wrapper_name)
+        PathBuf::from(&to).join(format!("mod_{}", uuid::Uuid::new_v4()))
     };
 
-    // Create the extraction directory if needed
-    std::fs::create_dir_all(&extraction_dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&extract_to).map_err(|e| format!("Failed to create directory: {e}"))?;
 
-    // Extract files
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-        let outpath = extraction_dir.join(file.name());
+        let outpath = extract_to.join(file.name());
 
         if file.name().ends_with('/') {
-            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+            fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
         } else {
-            if let Some(p) = outpath.parent() {
-                std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
             let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
     }
 
-    // --- Add or update mod.json with the url ---
-    let mod_json_path = extraction_dir.join("mod.json");
+    // Write mod.json (or update)
+    let mod_json_path = extract_to.join("mod.json");
     let mut mod_json: ModJson = if mod_json_path.exists() {
-        match std::fs::read_to_string(&mod_json_path) {
-            Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
-            Err(_) => ModJson::default(),
-        }
+        let content = fs::read_to_string(&mod_json_path).unwrap_or_default();
+        serde_json::from_str(&content).unwrap_or_default()
     } else {
         ModJson::default()
     };
+
     mod_json.url = url.clone();
     let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
-    std::fs::write(mod_json_path, json).map_err(|e| e.to_string())?;
+    fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
 
     Ok(())
 }
+
 #[command]
 fn delete_mod(path: String) -> Result<(), String> {
     let mod_dir = Path::new(&path);
@@ -392,6 +371,7 @@ fn send_f10() {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

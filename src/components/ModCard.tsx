@@ -3,6 +3,7 @@ import { Mod } from '../interfaces/Mod.interface';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import StatusButton from './StatusButton';
 import { COLORS, STYLE, TRANSITIONS } from '../constants/styling.constant';
+import { openPath } from '@tauri-apps/plugin-opener';
 
 interface ModCardProps {
     mod: Mod;
@@ -87,12 +88,11 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
                     <button
                         className={`text-sm font-medium ${COLORS.accent.primary} ${TRANSITIONS.interactive} 
                             flex items-center gap-1 hover:underline`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onClick();
+                        onClick={() => {
+                            openPath(mod.path);
                         }}
                     >
-                        Details
+                        Open Files
                         <svg
                             className="w-3.5 h-3.5"
                             fill="none"
