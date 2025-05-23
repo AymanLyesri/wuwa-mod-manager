@@ -41,7 +41,7 @@ jobs:
 
       # Step 7: Upload the generated Windows installer as a downloadable artifact
       - name: Upload installer
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: tauri-installer
           path: src-tauri/target/release/bundle/msi/*.msi
