@@ -39,7 +39,7 @@ export const TRANSITIONS = {
 };
 
 export const STYLE = {
-  panel: `rounded-xl border ${COLORS.border.panel} ${COLORS.background.panel} ${COLORS.shadow.panel} p-6`,
+  panel: `rounded-xl border ${COLORS.border.panel} ${COLORS.background.panel} ${COLORS.shadow.panel} p-4`,
   input: `w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} ${COLORS.background.input} ${COLORS.text.primary} ${TRANSITIONS.interactive} outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 placeholder:${COLORS.text.label}`,
   select: `w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} ${COLORS.background.input} ${COLORS.text.primary} ${TRANSITIONS.interactive} cursor-pointer outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900`,
   button: {

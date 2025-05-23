@@ -59,9 +59,22 @@ const ModGrid: React.FC<ModGridProps> = ({
             <div className={`${STYLE.panel} sticky top-0 z-10 m-0 lg:m-6 flex flex-col gap-4 lg:flex-row md:items-center md:justify-between`}>
                 {/* Title and Stats Section */}
                 <div className="space-y-2">
-                    <h2 className={`${STYLE.text.heading}`}>
-                        Installed Mods
-                    </h2>
+                    <div className='flex items-center justify-start'>
+                        <h2 className={`${STYLE.text.heading}`}>
+                            Installed Mods
+                        </h2>
+                        {/* Refresh Button */}
+                        <button
+                            className={`p-2 rounded-lg ${TRANSITIONS.interactive} hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:shadow-md`}
+                            onClick={fetchMods}
+                            title="Refresh mods"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         {/* Mod Count */}
                         <div className={`${STYLE.text.label} flex items-center gap-1`}>
@@ -95,26 +108,15 @@ const ModGrid: React.FC<ModGridProps> = ({
 
                 {/* Action Buttons Section */}
                 <div className="flex flex-wrap gap-2 justify-end">
-                    {/* Refresh Button */}
-                    <button
-                        className={`p-2 rounded-lg ${TRANSITIONS.interactive} hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:shadow-md`}
-                        onClick={fetchMods}
-                        title="Refresh mods"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                        </svg>
-                    </button>
 
-
-                    <div className="p-4">
+                    <div className="p-0">
                         <FilterMods mods={mods} onFilter={setFilteredMods} />
                     </div>
 
                     {/* Select Mode Toggle */}
                     <button
                         onClick={toggleSelectMode}
-                        className={`${STYLE.button.secondary} flex items-center gap-1`}
+                        className={`${STYLE.button.secondary}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

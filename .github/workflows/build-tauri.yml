@@ -1,0 +1,47 @@
+# Name of the workflow shown in the GitHub Actions tab
+name: Build Tauri App
+
+# Triggers for the workflow
+on:
+  push:                      # Trigger when someone pushes code
+    branches: [main]         # Only trigger on the 'main' branch
+  pull_request:              # Also trigger for pull requests
+    branches: [main]         # Only when targeting 'main'
+
+jobs:
+  build:
+    runs-on: windows-latest  # Use a Windows VM for the build (needed for .msi)
+
+    steps:
+      # Step 1: Clone your repository to the GitHub Actions runner
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # Step 2: Set up the Node.js version your project needs
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'  # Change to match your project's version
+
+      # Step 3: Set up the Rust toolchain (Tauri is written in Rust)
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Step 4: Install all Node.js dependencies (from package.json)
+      - name: Install dependencies
+        run: npm install
+
+      # Step 5: Install the Tauri CLI via Cargo (Rust's package manager)
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli
+
+      # Step 6: Build the Tauri application (this includes the MSI)
+      - name: Build the Tauri app
+        run: npm run tauri build
+
+      # Step 7: Upload the generated Windows installer as a downloadable artifact
+      - name: Upload installer
+        uses: actions/upload-artifact@v3
+        with:
+          name: tauri-installer
+          path: src-tauri/target/release/bundle/msi/*.msi

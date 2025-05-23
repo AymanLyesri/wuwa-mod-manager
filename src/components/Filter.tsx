@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Mod } from "../interfaces/Mod.interface";
 import { STYLE } from "../constants/styling.constant";
 
@@ -20,7 +21,6 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
     const [filters, setFilters] = useState<Partial<Record<keyof Mod, string>>>({});
     const [sortMethod, setSortMethod] = useState<string>("name-asc");
 
-    // Extract unique values for each property
     const filterOptions = useMemo(() => {
         const keysToFilter: (keyof Mod)[] = ["author", "category", "version", "enabled"];
         const options: Record<string, Set<string>> = {};
@@ -48,16 +48,12 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
     };
 
     const applyFiltersAndSorting = (currentFilters: typeof filters, currentSort: string) => {
-        // Apply filters
         let filtered = mods.filter(mod =>
             Object.entries(currentFilters).every(([k, v]) => v === "" || mod[k as keyof Mod]?.toString() === v)
         );
 
-        // Apply sorting
         filtered = [...filtered].sort((a, b) => {
             const [sortKey, sortDirection] = currentSort.split("-");
-
-            // Handle enabled separately since it's boolean
             if (sortKey === "enabled") {
                 return sortDirection === "asc"
                     ? Number(a.enabled) - Number(b.enabled)
@@ -67,11 +63,9 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
             const aValue = a[sortKey as keyof Mod]?.toString().toLowerCase() || "";
             const bValue = b[sortKey as keyof Mod]?.toString().toLowerCase() || "";
 
-            if (sortDirection === "asc") {
-                return aValue.localeCompare(bValue);
-            } else {
-                return bValue.localeCompare(aValue);
-            }
+            return sortDirection === "asc"
+                ? aValue.localeCompare(bValue)
+                : bValue.localeCompare(aValue);
         });
 
         onFilter(filtered);
@@ -84,51 +78,63 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
     };
 
     return (
+        <div className="flex justify-end gap-3">
+            <Popover className="relative">
+                <PopoverButton className={STYLE.button.secondary}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 " viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                    </svg>
+                    <span>Filter</span>
+                </PopoverButton>
 
-
-        <div className="flex flex-wrap items-center gap-3">
-            {/* Filter Dropdowns */}
-            {Object.entries(filterOptions).map(([key, values]) => (
-                <div key={key} className="relative min-w-[150px] flex-1">
-                    <select
-                        className={STYLE.select}
-                        value={filters[key as keyof Mod] ?? ""}
-                        onChange={e => handleFilterChange(key as keyof Mod, e.target.value)}
-                    >
-                        <option value="">All {key}</option>
-                        {[...values].map(value => (
-                            <option key={value} value={value}>
-                                {value}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            ))}
-
-            {/* Sort Dropdown */}
-            <div className="relative min-w-[180px]">
-                <select
-                    className={STYLE.select}
-                    value={sortMethod}
-                    onChange={e => handleSortChange(e.target.value)}
-                >
-                    {sortOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
+                <PopoverPanel className={STYLE.panel + " absolute z-10 right-0 mt-2 w-96 p-4 flex flex-col gap-5"}>
+                    {/* Filter Dropdowns */}
+                    {Object.entries(filterOptions).map(([key, values]) => (
+                        <div key={key}>
+                            <label className="block text-sm font-medium mb-1 capitalize">{key}</label>
+                            <select
+                                className={STYLE.select}
+                                value={filters[key as keyof Mod] ?? ""}
+                                onChange={e => handleFilterChange(key as keyof Mod, e.target.value)}
+                            >
+                                <option value="">All {key}</option>
+                                {[...values].map(value => (
+                                    <option key={value} value={value}>
+                                        {value}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     ))}
-                </select>
-            </div>
 
-            {/* Reset Button */}
-            <button
-                onClick={resetFilters}
-                className={STYLE.button.secondary}
-            >
-                Reset Filters
-            </button>
+                    {/* Sort Dropdown */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Sort By</label>
+                        <select
+                            className={STYLE.select}
+                            value={sortMethod}
+                            onChange={e => handleSortChange(e.target.value)}
+                        >
+                            {sortOptions.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Reset Button */}
+                    <div className="flex justify-end">
+                        <button
+                            onClick={resetFilters}
+                            className={STYLE.button.secondary}
+                        >
+                            Reset Filters
+                        </button>
+                    </div>
+                </PopoverPanel>
+            </Popover>
         </div>
-
     );
 };
 

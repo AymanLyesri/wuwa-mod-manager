@@ -10,12 +10,3 @@ export interface Mod {
     thumbnail: string;
     enabled: boolean;
 }
-
-
-export function filterModsByProperty<K extends keyof Mod>(
-    mods: Mod[],
-    property: K,
-    value: Mod[K]
-): Mod[] {
-    return mods.filter(mod => mod[property] === value);
-}

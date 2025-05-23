@@ -143,7 +143,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto p-4">
-                {/* Thumbnail section */}
                 <div className="pb-6 relative group">
                     <div
                         ref={thumbnailRefZone}
@@ -168,6 +167,14 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                                 <span className="text-sm text-neutral-400">Drag or paste image</span>
                             </div>
                         )}
+
+                        {/* Hover overlay text */}
+                        <div className="absolute inset-0 flex justify-center items-center bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                            <span className="text-sm text-white">Drag or paste image</span>
+                        </div>
+
+                        {/* Button on hover */}
                         <div className="absolute inset-0 flex justify-center items-end pb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <button
                                 type="button"
@@ -183,6 +190,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                         </div>
                     </div>
                 </div>
+
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,11 +1,11 @@
-import { COLORS, TRANSITIONS } from "../constants/styling.constant";
+import { COLORS } from "../constants/styling.constant";
 import { Mod } from "../interfaces/Mod.interface";
 
 
 export default ({ mod, onClick }: { mod: Mod; onClick: (any: any) => void }) => {
     return <button
         onClick={onClick}
-        className={`px-4 py-2 rounded-full text-sm font-semibold ${TRANSITIONS.button} 
+        className={`px-4 py-2 rounded-full text-sm font-semibold
                             ${mod.enabled ? COLORS.background.button.toggle.enabled : COLORS.background.button.toggle.disabled}
                             flex items-center gap-2`}
     >

@@ -11,6 +11,7 @@ export const categories: Category[] = [
     { "name": "Carlotta", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6812a3cf60524.png" },
     { "name": "Changli", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6683c68095b05.png" },
     { "name": "Chixia", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6683c25a55aad.png" },
+    { "name": "Ciaccona", "icon": "" },
     { "name": "Danjin", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6683c49eef2b5.png" },
     { "name": "Encore", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6683c41aafe7c.png" },
     { "name": "Jianxin", "icon": "https://images.gamebanana.com/img/ico/ModCategory/6683c6300cb95.png" },

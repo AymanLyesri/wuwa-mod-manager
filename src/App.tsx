@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ModGrid from './components/ModGrid';
-import { filterModsByProperty, Mod } from './interfaces/Mod.interface';
+import { Mod } from './interfaces/Mod.interface';
 import { getFolderContents } from './services/folder.service';
 import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
@@ -8,6 +8,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { deleteMod, downloadMod, setModInfo } from './services/mod.service';
 import { Spinner } from './components/Spinner';
 import { AnimatePresence } from 'framer-motion';
+import { ToastContainer } from 'react-toastify';
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
@@ -83,11 +84,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFilterMods = (filter: string) => {
-    const filteredMods = filterModsByProperty(mods, 'category', filter);
-    setMods(filteredMods);
-  };
-
   return (
     <div className=" h-screen overflow-hidden bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
       <Header
@@ -120,6 +116,18 @@ const App: React.FC = () => {
             )}
           </AnimatePresence>
         </main>
+        <ToastContainer
+          position="bottom-center"
+          autoClose={1000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
 
         {isPanelOpen && selectedMod && (
           <ModInfoPanel
