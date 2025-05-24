@@ -1,12 +1,15 @@
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import React, { useState, useEffect } from 'react';
+import { STYLE } from '../constants/styling.constant';
+import { addMod, downloadMod } from '../services/mod.service';
+import { open } from '@tauri-apps/plugin-dialog';
 
 interface HeaderProps {
-    onAddMod: (url: string) => void;
-    onSelectFolder: () => void;
+    refreshMods: () => void;
+    setModDirPath: (path: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
-    const [addModExpanded, setAddModExpanded] = useState(false);
+const Header: React.FC<HeaderProps> = ({ refreshMods, setModDirPath }) => {
     const [modUrl, setModUrl] = useState('');
     const [darkMode, setDarkMode] = useState(() => {
         // Check localStorage for user preference or use system preference
@@ -29,11 +32,54 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
         }
     }, [darkMode]);
 
-    const handleAddMod = () => {
-        if (modUrl.trim()) {
-            onAddMod(modUrl);
-            setModUrl('');
-            setAddModExpanded(false);
+    // Then add this function to your App component
+    const handleSelectFolder = async () => {
+        try {
+            const file = await open({
+                multiple: false,
+                directory: true,
+            });
+
+            if (file) {
+                const selectedPath = file as string;
+                setModDirPath(selectedPath);
+                localStorage.setItem('modDirPath', selectedPath); // Save the path to localStorage
+                refreshMods(); // Refresh mods after selecting a new folder
+            }
+        } catch (error) {
+            console.error('Error selecting folder:', error);
+        }
+    };
+
+    const handleDownloadMod = () => {
+        const modDirPath = localStorage.getItem('modDirPath');
+        if (modUrl.trim() && modDirPath) {
+            downloadMod(modUrl, modDirPath).finally(() => {
+                setModUrl('');
+                refreshMods();
+            }
+            );
+        }
+
+
+    };
+
+    const handleAddMod = async () => {
+        try {
+            const file = await open({
+                multiple: false,
+                directory: true,
+            });
+
+            if (file) {
+                const modDirPath = localStorage.getItem('modDirPath') || '';
+                const selectedPath = file as string;
+                addMod(selectedPath, modDirPath).finally(() => {
+                    refreshMods(); // Refresh mods after selecting a new folder
+                });
+            }
+        } catch (error) {
+            console.error('Error selecting folder:', error);
         }
     };
 
@@ -68,10 +114,10 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
                         )}
                     </button>
 
-                    {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Select Folder Button */}
                         <button
-                            onClick={onSelectFolder}
+                            onClick={handleSelectFolder}
                             className="flex items-center gap-2 px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700/90 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-800 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-500 dark:text-purple-400" viewBox="0 0 20 20" fill="currentColor">
@@ -80,48 +126,52 @@ const Header: React.FC<HeaderProps> = ({ onAddMod, onSelectFolder }) => {
                             <span>Select Folder</span>
                         </button>
 
-                        {!addModExpanded ? (
-                            <button
-                                onClick={() => setAddModExpanded(true)}
+                        {/* Add Mod Popover */}
+                        <Popover>
+
+                            <PopoverButton
                                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 dark:from-cyan-600 dark:to-blue-600 hover:from-cyan-400 hover:to-blue-400 dark:hover:from-cyan-500 dark:hover:to-blue-500 rounded-lg text-white font-medium transition-all hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                                 </svg>
                                 <span>Add Mod</span>
-                            </button>
-                        ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={modUrl}
-                                    onChange={(e) => setModUrl(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleAddMod()}
-                                    placeholder="mod URL (download/file)"
-                                    className="flex-1 px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                                    autoFocus
-                                />
-                                <button
-                                    onClick={handleAddMod}
-                                    className="px-4 py-2 bg-cyan-500 dark:bg-cyan-600 hover:bg-cyan-400 dark:hover:bg-cyan-500 text-white rounded-lg transition-all"
-                                >
-                                    Add
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setAddModExpanded(false);
-                                        setModUrl('');
-                                    }}
-                                    className="px-3 py-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-300 rounded-lg transition-all"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        )}
+                            </PopoverButton>
+
+                            <PopoverPanel className={STYLE.panel + " absolute z-10 right-0 mt-2 w-96 p-4 flex flex-col gap-5"}>
+                                <div className="flex flex-col gap-2">
+                                    <input
+                                        type="text"
+                                        value={modUrl}
+                                        onChange={(e) => setModUrl(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleDownloadMod()}
+                                        placeholder="Mod URL (download/file)"
+                                        className="px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                                        autoFocus
+                                    />
+
+                                    <button
+                                        onClick={handleDownloadMod}
+                                        className={STYLE.button.primary + " w-full"}
+                                    >
+                                        Add
+                                    </button>
+
+                                    <button
+                                        className={STYLE.button.secondary + " w-full"}
+                                        onClick={handleAddMod}
+                                    >
+                                        Choose File
+                                    </button>
+                                </div>
+                            </PopoverPanel>
+
+
+                        </Popover>
                     </div>
                 </div>
             </div>
-        </header>
+        </header >
     );
 };
 

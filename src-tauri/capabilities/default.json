@@ -7,7 +7,14 @@
   ],
   "permissions": [
     "core:default",
-    "dialog:default",
+    {
+      "identifier": "dialog:default",
+      "allow": [
+        {
+          "path": "**/*"
+        }
+      ]
+    },
     {
       "identifier": "fs:default",
       "allow": [

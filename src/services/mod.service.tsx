@@ -4,6 +4,25 @@ import { useAsyncLoadingHook } from "../hooks/loadingHook";
 import { toast } from "react-toastify";
 // import { reloadGame } from "./game.service";
 
+export const addMod = async (path: string, to: string): Promise<Mod> => {
+    // Ensure the path and to is not an empty string
+    if (!path || !to) {
+        toast.error('Invalid path or destination');
+        throw new Error('Invalid path or destination');
+
+    }
+
+    try {
+        const result: Mod = await invoke('add_mod', { path, to });
+        toast.success('Mod added successfully');
+        return result;
+    } catch (error) {
+        console.error('Error adding mod:', error);
+        toast.error('Error adding mod');
+        throw error;
+    }
+}
+
 export const setModInfo = async (mod: Mod): Promise<Mod> => {
     try {
         const result: Mod = await invoke('set_mod_info', { modData: mod });

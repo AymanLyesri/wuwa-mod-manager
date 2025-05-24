@@ -7,7 +7,7 @@ use tauri::command;
 
 use std::collections::HashSet;
 use std::fs::{self, File};
-use std::io::{Cursor, Read};
+use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 
 use base64::{engine::general_purpose, Engine as _};
@@ -348,6 +348,56 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn add_mod(path: String, to: String) -> Result<(), String> {
+    let mod_dir = Path::new(&path);
+    let target_dir = Path::new(&to);
+
+    if !mod_dir.exists() || !mod_dir.is_dir() {
+        return Err("Mod directory does not exist".to_string());
+    }
+
+    if !target_dir.exists() || !target_dir.is_dir() {
+        return Err("Target directory does not exist".to_string());
+    }
+
+    let mod_name = mod_dir.file_name().ok_or("Invalid mod directory name")?;
+    let new_mod_path = target_dir.join(mod_name);
+
+    if new_mod_path.exists() {
+        return Err("Mod already exists in the target directory".to_string());
+    }
+
+    // Perform the recursive copy
+    copy_dir_recursive(mod_dir, &new_mod_path).map_err(|e| e.to_string())?;
+
+    // Remove the original directory after successful copy
+    fs::remove_dir_all(mod_dir).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Recursively copies the contents of `src` to `dst`
+fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
+}
+
 #[command]
 fn delete_mod(path: String) -> Result<(), String> {
     let mod_dir = Path::new(&path);
@@ -381,6 +431,7 @@ fn main() {
             download_mod,
             delete_mod,
             send_f10,
+            add_mod
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -43,13 +43,18 @@ export const STYLE = {
   input: `w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} ${COLORS.background.input} ${COLORS.text.primary} ${TRANSITIONS.interactive} outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 placeholder:${COLORS.text.label}`,
   select: `w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} ${COLORS.background.input} ${COLORS.text.primary} ${TRANSITIONS.interactive} cursor-pointer outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900`,
   button: {
-    primary: `px-5 py-2.5 rounded-lg font-semibold ${COLORS.background.button.primary} ${TRANSITIONS.interactive} ${COLORS.shadow.button} focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-600 disabled:opacity-60`,
+    primary: `px-5 py-2.5 rounded-lg font-semibold 
+        flex items-center justify-center
+    ${COLORS.background.button.primary}
+     ${TRANSITIONS.interactive} 
+     ${COLORS.shadow.button} 
+     `,
     secondary: `
     px-3 py-2 rounded-lg font-medium
-    bg-white hover:bg-neutral-100 dark:bg-neutral-700 dark:hover:bg-neutral-600
+    flex items-center justify-center
+    ${COLORS.background.button.secondary}
     ${COLORS.text.primary}
     ${TRANSITIONS.interactive}
-    flex items-center gap-2
   `,
   },
   card: `rounded-xl bg-white dark:bg-neutral-800 ${COLORS.border.panel} ${COLORS.shadow.card} ${TRANSITIONS.base} hover:${COLORS.shadow.card} p-5`,

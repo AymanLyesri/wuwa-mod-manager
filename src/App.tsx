@@ -4,8 +4,7 @@ import { Mod } from './interfaces/Mod.interface';
 import { getFolderContents } from './services/folder.service';
 import Header from './components/Header';
 import ModInfoPanel from './components/ModInfoPanel';
-import { open } from '@tauri-apps/plugin-dialog';
-import { deleteMod, downloadMod, setModInfo } from './services/mod.service';
+import { deleteMod, setModInfo } from './services/mod.service';
 import { Spinner } from './components/Spinner';
 import { AnimatePresence } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
@@ -49,12 +48,6 @@ const App: React.FC = () => {
     setIsPanelOpen(false);
   };
 
-  const handleDownloadMod = (url: string) => {
-    downloadMod(url, modDirPath).finally(() => {
-      fetchMods();
-    });
-  }
-
   const handleModsDelete = async (mod: Mod[]) => {
     mod.forEach((mod) => {
       deleteMod(mod).finally(() => {
@@ -65,30 +58,11 @@ const App: React.FC = () => {
     })
   }
 
-  // Then add this function to your App component
-  const handleSelectFolder = async () => {
-    try {
-      const file = await open({
-        multiple: false,
-        directory: true,
-      });
-
-      if (file) {
-        const selectedPath = file as string;
-        setModDirPath(selectedPath);
-        localStorage.setItem('modDirPath', selectedPath); // Save the path to localStorage
-        fetchMods(); // Fetch mods after selecting the folder
-      }
-    } catch (error) {
-      console.error('Error selecting folder:', error);
-    }
-  };
-
   return (
     <div className=" h-screen overflow-hidden bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
       <Header
-        onAddMod={handleDownloadMod}
-        onSelectFolder={handleSelectFolder}
+        refreshMods={fetchMods}
+        setModDirPath={setModDirPath}
       />
       <Spinner />
       <div className="flex flex-1 overflow-hidden relative">
@@ -105,13 +79,13 @@ const App: React.FC = () => {
               />
             ) : (
               <div className="text-center p-8">
-                <p className=" mb-4">No mods directory selected</p>
+                {/* <p className=" mb-4">No mods directory selected</p>
                 <button
                   onClick={handleSelectFolder}
                   className="px-4 py-2  rounded"
                 >
                   Select Mods Directory
-                </button>
+                </button> */}
               </div>
             )}
           </AnimatePresence>
