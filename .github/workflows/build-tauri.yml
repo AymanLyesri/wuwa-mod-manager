@@ -1,45 +1,64 @@
-# Name of the workflow shown in the GitHub Actions tab
 name: Build Tauri App
 
-# Triggers for the workflow
 on:
-  push:                      # Trigger when someone pushes code
-    branches: [main]         # Only trigger on the 'main' branch
-  pull_request:              # Also trigger for pull requests
-    branches: [main]         # Only when targeting 'main'
+  push:
+    branches: [main]  # Replace with your default branch if different
+  pull_request:
+    branches: [main]
 
 jobs:
   build:
-    runs-on: windows-latest  # Use a Windows VM for the build (needed for .msi)
+    runs-on: windows-latest
 
     steps:
-      # Step 1: Clone your repository to the GitHub Actions runner
+      # Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Step 2: Set up the Node.js version your project needs
+      # Setup Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Change to match your project's version
+          node-version: '18'
 
-      # Step 3: Set up the Rust toolchain (Tauri is written in Rust)
+      # Cache node_modules to speed up installs
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Setup Rust (stable toolchain)
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Step 4: Install all Node.js dependencies (from package.json)
+      # Cache Cargo registry and target dir
+      - name: Cache Rust build
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Install Node.js dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 5: Install the Tauri CLI via Cargo (Rust's package manager)
+      # Install the Tauri CLI
       - name: Install Tauri CLI
         run: cargo install tauri-cli
 
-      # Step 6: Build the Tauri application (this includes the MSI)
+      # Build the Tauri app (generates the .msi installer)
       - name: Build the Tauri app
         run: npm run tauri build
 
-      # Step 7: Upload the generated Windows installer as a downloadable artifact
+      # Upload the generated MSI as a downloadable artifact
       - name: Upload installer
         uses: actions/upload-artifact@v4.6.2
         with:
