@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { setModThumbnail } from "../services/mod.service";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCategories } from "../services/category.service";
-import { COLORS, STYLE, TRANSITIONS } from "../constants/styling.constant";
+import { COLORS, STYLE } from "../constants/styling.constant";
 import StatusButton from "./StatusButton";
 import { motion } from "framer-motion";
 
