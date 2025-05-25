@@ -21,6 +21,17 @@ use reqwest::{self, Client};
 use zip::ZipArchive;
 
 #[derive(Debug, Serialize, Deserialize)]
+struct Categories {
+    categories: Vec<Category>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Category {
+    name: String,
+    icon: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Mod {
     pub id: String,
@@ -47,6 +58,29 @@ struct ModJson {
     category: String,
     url: String,
 }
+
+fn load_categories() -> Vec<Category> {
+    let categories_json = include_str!("../../src/assets/categories.json");
+    match serde_json::from_str::<Categories>(categories_json) {
+        Ok(categories) => categories.categories,
+        Err(e) => {
+            eprintln!("Error loading categories: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+fn find_matching_category(name: &str, categories: &[Category]) -> Option<String> {
+    let name_lower = name.to_lowercase();
+    for category in categories {
+        let category_name = category.name.replace("\\", "").to_lowercase();
+        if name_lower.contains(&category_name) {
+            return Some(category.name.clone());
+        }
+    }
+    None
+}
+
 #[command]
 fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
     let dir = Path::new(&path);
@@ -54,6 +88,9 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
     if !dir.exists() || !dir.is_dir() {
         return Err("Invalid directory path".to_string());
     }
+
+    // Load categories
+    let categories = load_categories();
 
     // Regex to extract version from folder name (e.g., "mod_v1.0")
     // This regex captures the version number in the format "vX.X" or ".X.X"
@@ -89,7 +126,7 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
         };
 
         let details_path = path.join("mod.json");
-        let details = if details_path.exists() {
+        let mut details = if details_path.exists() {
             match std::fs::read_to_string(&details_path) {
                 Ok(contents) => serde_json::from_str::<ModJson>(&contents).unwrap_or_default(),
                 Err(_) => ModJson::default(),
@@ -111,6 +148,13 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
 
         let id = name.clone(); // using folder name as ID
         let name = display_name.clone();
+
+        // If category is not set in mod.json, try to determine it from the mod name
+        if details.category.is_empty() {
+            if let Some(category) = find_matching_category(&name, &categories) {
+                details.category = category;
+            }
+        }
 
         // Get category and url from mod.json, fallback to empty string if not present
         let author = details.author;

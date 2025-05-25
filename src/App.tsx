@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import ModGrid from './components/ModGrid';
-import { Mod } from './interfaces/Mod.interface';
-import { getFolderContents } from './services/folder.service';
-import Header from './components/Header';
-import ModInfoPanel from './components/ModInfoPanel';
-import { deleteMod, setModInfo } from './services/mod.service';
-import { Spinner } from './components/Spinner';
-import { AnimatePresence } from 'framer-motion';
-import { ToastContainer } from 'react-toastify';
+import React, { useEffect, useState } from "react";
+import ModGrid from "./components/ModGrid";
+import { Mod } from "./interfaces/Mod.interface";
+import { getFolderContents } from "./services/folder.service";
+import Header from "./components/Header";
+import ModInfoPanel from "./components/ModInfoPanel";
+import { deleteMod, setModInfo } from "./services/mod.service";
+import { Spinner } from "./components/Spinner";
+import { AnimatePresence } from "framer-motion";
+import { ToastContainer } from "react-toastify";
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [modDirPath, setModDirPath] = useState<string>(localStorage.getItem('modDirPath') || '');
+  const [modDirPath, setModDirPath] = useState<string>(
+    localStorage.getItem("modDirPath") || ""
+  );
 
   useEffect(() => {
     if (modDirPath) {
@@ -25,11 +27,11 @@ const App: React.FC = () => {
     try {
       if (modDirPath) {
         const mods = await getFolderContents(modDirPath);
-        console.log('Fetched mods:', mods);
+        console.log("Fetched mods:", mods);
         setMods(mods);
       }
     } catch (error) {
-      console.error('Error fetching mods:', error);
+      console.error("Error fetching mods:", error);
     }
   };
 
@@ -55,18 +57,19 @@ const App: React.FC = () => {
         setIsPanelOpen(false);
         setSelectedMod(null);
       });
-    })
-  }
+    });
+  };
 
   return (
-    <div className=" h-screen overflow-hidden bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
-      <Header
-        refreshMods={fetchMods}
-        setModDirPath={setModDirPath}
-      />
+    <div className="min-h-screen w-full bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
+      <Header refreshMods={fetchMods} setModDirPath={setModDirPath} />
       <Spinner />
-      <div className="flex flex-1 overflow-hidden relative">
-        <main className={`flex-1 overflow-y-auto`}>
+      <div className="flex flex-1 overflow-hidden relative flex-col lg:flex-row">
+        <main
+          className={`flex-1 overflow-y-auto ${
+            isPanelOpen ? "lg:pr-[450px]" : ""
+          } transition-all duration-300`}
+        >
           <AnimatePresence mode="wait">
             {modDirPath ? (
               <ModGrid
@@ -90,6 +93,7 @@ const App: React.FC = () => {
             )}
           </AnimatePresence>
         </main>
+
         <ToastContainer
           position="bottom-center"
           autoClose={1000}
@@ -101,6 +105,7 @@ const App: React.FC = () => {
           draggable
           pauseOnHover
           theme="dark"
+          className="!-mb-4 sm:!-mb-0"
         />
 
         {isPanelOpen && selectedMod && (
