@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import ModCard from "./ModCard";
 import { Mod } from "../interfaces/Mod.interface";
 import { LAYOUT, STYLE, TRANSITIONS } from "../constants/styling.constant";
