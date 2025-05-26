@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Mod } from "../interfaces/Mod.interface";
-import { STYLE, TRANSITIONS } from "../constants/styling.constant";
+import { STYLE, TRANSITIONS, COLORS } from "../constants/styling.constant";
 
 interface Props {
   mods: Mod[];
@@ -119,10 +119,12 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
 
         <PopoverPanel
           className={`
-                    ${STYLE.panel} absolute z-10 right-0 mt-2 w-96 
-                    ${STYLE.flex.column} gap-5
-                    ${TRANSITIONS.base}
-                `}
+            absolute z-10 right-0 mt-2 w-96 
+            rounded-xl border ${COLORS.border.panel}
+            ${COLORS.background.popover} ${COLORS.shadow.panel}
+            ${STYLE.flex.column} gap-5
+            p-4 space-y-4
+          `}
         >
           {/* Filter Dropdowns */}
           {Object.entries(filterOptions).map(([key, values]) => (

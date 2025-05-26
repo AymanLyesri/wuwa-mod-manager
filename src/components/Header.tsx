@@ -82,7 +82,7 @@ const Header: React.FC<HeaderProps> = ({
     <header
       className={`
       ${COLORS.background.card} backdrop-blur-sm border-b ${COLORS.border.panel}
-      p-4 sticky top-0 z-50 ${TRANSITIONS.base}
+      p-2 sticky top-0 z-50 ${TRANSITIONS.base}
     `}
     >
       <div
@@ -200,10 +200,11 @@ const Header: React.FC<HeaderProps> = ({
 
                 <PopoverPanel
                   className={`
-                  absolute right-0 mt-2 w-80 z-10 
-                  ${COLORS.background.panel} rounded-xl ${COLORS.border.panel} ${COLORS.shadow.panel}
-                  p-4 space-y-4
-                `}
+                    absolute right-0 mt-2 w-80 z-10 
+                    rounded-xl border ${COLORS.border.panel}
+                    ${COLORS.background.popover} ${COLORS.shadow.panel}
+                    p-4 space-y-4
+                  `}
                 >
                   <div className="space-y-4">
                     <div>

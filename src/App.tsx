@@ -86,9 +86,9 @@ const App: React.FC = () => {
         setDarkMode={setDarkMode}
         darkMode={darkMode}
       />
-      <div className="flex flex-1 overflow-hidden relative flex-col lg:flex-row">
+      <div className="flex-1 relative flex flex-col lg:flex-row">
         <main
-          className={`flex-1 overflow-y-auto ${
+          className={`flex-1 ${
             isPanelOpen ? "lg:pr-[450px]" : ""
           } transition-all duration-300`}
         >

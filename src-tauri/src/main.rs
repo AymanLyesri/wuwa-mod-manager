@@ -5,7 +5,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::{command, Emitter};
 
-use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
@@ -103,7 +102,11 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
     // This regex captures the version number in the format "vX.X" or ".X.X"
     let version_regex = Regex::new(r"(?i)v?\.?(\d+\.\d+)").unwrap();
 
+    // Regex to check if a string is a number
+    let number_regex = Regex::new(r"^\d+$").unwrap();
+
     let mut mods = Vec::new();
+    let mut next_id = 1;
 
     for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -153,7 +156,20 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
                 .unwrap_or_else(|| "".to_string())
         };
 
-        let id = name.clone(); // using folder name as ID
+        // Set ID: if current ID is numeric, keep it; otherwise assign next sequential ID
+        let id = if number_regex.is_match(&name) {
+            name.clone()
+        } else {
+            next_id.to_string()
+        };
+
+        // Increment next_id if we used it or if the current numeric ID is >= next_id
+        if let Ok(current_id) = name.parse::<i32>() {
+            next_id = std::cmp::max(next_id, current_id + 1);
+        } else {
+            next_id += 1;
+        }
+
         let name = display_name.clone();
 
         // If category is not set in mod.json, try to determine it from the mod name

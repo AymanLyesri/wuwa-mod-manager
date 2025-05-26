@@ -1,23 +1,23 @@
 export const COLORS = {
   background: {
-    panel:
-      "bg-gradient-to-br from-white via-neutral-50 to-neutral-100 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800 backdrop-blur-xl",
+    panel: "bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md",
     input:
       "bg-white/80 hover:bg-white focus:bg-white dark:bg-neutral-800/50 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800",
     button: {
       primary:
         "bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 dark:from-violet-600 dark:to-indigo-600 dark:hover:from-violet-500 dark:hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/25 dark:shadow-indigo-900/40",
       secondary:
-        "bg-white hover:bg-neutral-50 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white shadow-lg shadow-neutral-200/50 dark:shadow-black/20",
+        "bg-white/80 hover:bg-white dark:bg-neutral-800/80 dark:hover:bg-neutral-700/90 text-neutral-900 dark:text-white shadow-lg shadow-neutral-200/50 dark:shadow-black/20 backdrop-blur-md",
       toggle: {
         enabled:
           "bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 dark:shadow-emerald-900/40",
         disabled:
-          "bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700/50 dark:hover:bg-neutral-600/50 text-neutral-600 dark:text-neutral-400",
+          "bg-neutral-200/80 hover:bg-neutral-300/80 dark:bg-neutral-700/50 dark:hover:bg-neutral-600/50 text-neutral-600 dark:text-neutral-400 backdrop-blur-md",
       },
     },
-    card: "bg-white/80 dark:bg-neutral-800/50 backdrop-blur-xl",
-    overlay: "bg-black/60 backdrop-blur-sm dark:bg-black/80",
+    card: "bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md",
+    overlay: "bg-black/60 backdrop-blur-md dark:bg-black/80",
+    popover: "bg-white/90 dark:bg-neutral-800/90 backdrop-blur-md",
   },
   text: {
     primary: "text-neutral-900 dark:text-white",
@@ -84,15 +84,15 @@ export const LAYOUT = {
     column: "flex flex-col",
   },
   grid: {
-    responsive: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6",
+    responsive: "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6",
     fixed: "grid grid-cols-3 gap-6",
   },
-  container: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+  container: "max-w-10xl mx-auto px-4 sm:px-6 lg:px-8",
 };
 
 export const STYLE = {
   // Base Components
-  panel: `relative rounded-xl ${COLORS.border.panel} ${COLORS.background.panel} ${COLORS.shadow.panel} p-4 overflow-hidden`,
+  panel: `rounded-xl ${COLORS.border.panel} ${COLORS.background.panel} ${COLORS.shadow.panel} p-4`,
 
   input: `relative w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} ${COLORS.background.input} 
     ${COLORS.text.primary} ${TRANSITIONS.interactive} outline-none 
