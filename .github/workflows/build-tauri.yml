@@ -65,6 +65,7 @@ jobs:
 
       # Check/install Tauri CLI
       - name: Install Tauri CLI if not present
+        shell: bash
         run: |
           if !(cargo tauri --version > /dev/null 2>&1); then
             cargo install tauri-cli
