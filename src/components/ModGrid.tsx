@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ModCard from "./ModCard";
 import { Mod } from "../interfaces/Mod.interface";
-import { STYLE, TRANSITIONS } from "../constants/styling.constant";
+import { LAYOUT, STYLE, TRANSITIONS } from "../constants/styling.constant";
 import { motion } from "framer-motion";
 import FilterMods from "./Filter";
 
@@ -24,11 +24,7 @@ const ModGrid: React.FC<ModGridProps> = ({
 }) => {
   const [selectedMods, setSelectedMods] = useState<Mod[]>([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
-  const [filteredMods, setFilteredMods] = useState<Mod[]>([]); // full mods list
-
-  useEffect(() => {
-    setFilteredMods(mods);
-  }, [mods]);
+  const [filteredMods, setFilteredMods] = useState<Mod[]>(mods); // Initialize with mods
 
   const toggleModSelection = (mod: Mod) => {
     if (selectedMods.includes(mod)) {
@@ -216,13 +212,7 @@ const ModGrid: React.FC<ModGridProps> = ({
           - break-inside-avoid: prevents cards from breaking across columns
           - space-y-4: margin between cards within the same column
       */}
-      <div
-        className={`
-          columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5
-          gap-4 p-4 lg:p-6 min-h-screen
-          space-y-4
-        `}
-      >
+      <div className={LAYOUT.grid.responsive}>
         {filteredMods.map((mod) => (
           <motion.div
             key={mod.id}

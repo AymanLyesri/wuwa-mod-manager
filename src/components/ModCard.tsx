@@ -37,6 +37,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
       hover:-translate-y-1
       transition-all duration-300 ease-out
       h-full flex flex-col
+      !p-0
     `}
       onClick={onClick}
     >
@@ -45,10 +46,12 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
         className={`
         ${STYLE.image.container}
         ring-1 ring-white/10 dark:ring-black/10
-        before:absolute before:inset-0 before:z-10 before:rounded-2xl before:ring-1 before:ring-inset before:ring-white/10 dark:before:ring-white/5
-        after:absolute after:inset-0 after:z-10 after:rounded-2xl after:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]
+        before:absolute before:inset-0 before:z-10 before:rounded-t-2xl before:rounded-b-none before:ring-1 before:ring-inset before:ring-white/10 dark:before:ring-white/5
+        after:absolute after:inset-0 after:z-10 after:rounded-t-2xl after:rounded-b-none after:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]
         overflow-hidden
-        aspect-[16/9] sm:aspect-[4/3]
+        w-full
+        aspect-[16/9]
+        rounded-t-2xl rounded-b-none
       `}
       >
         {/* Category Icon */}
@@ -65,7 +68,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
           )}
 
         {mod.thumbnail ? (
-          <div className="absolute inset-0 overflow-hidden rounded-2xl">
+          <div className="relative h-full w-full">
             <img
               src={convertFileSrc(mod.thumbnail) + "?t=" + Date.now()}
               alt={mod.name}
@@ -104,7 +107,7 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col space-y-3 ">
+      <div className="flex-1 flex flex-col space-y-3 p-6">
         {/* Header with version */}
         <div className={STYLE.flex.between}>
           <h3

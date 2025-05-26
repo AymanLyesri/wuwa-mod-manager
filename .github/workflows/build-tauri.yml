@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write  # Needed for create-release and upload-release-asset
+  contents: write
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       # Cache node_modules
       - name: Cache node_modules
@@ -38,8 +38,8 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Cache Rust dependencies
-      - name: Cache Rust
+      # Cache Cargo registry and target
+      - name: Cache Rust dependencies
         uses: actions/cache@v3
         with:
           path: |
@@ -50,32 +50,46 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      # Cache Cargo bin (tauri-cli)
+      - name: Cache Cargo bin
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-tauri-cli
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
       # Install dependencies
-      - name: Install dependencies
+      - name: Install npm dependencies
         run: npm ci
 
-      # Install Tauri CLI
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli
+      # Check/install Tauri CLI
+      - name: Install Tauri CLI if not present
+        run: |
+          if !(cargo tauri --version > /dev/null 2>&1); then
+            cargo install tauri-cli
+          fi
 
-      # Extract version from package.json
-      - name: Get app version
+      # Generate a timestamp-based version
+      - name: Set version from date
         id: version
         shell: bash
-        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+        run: echo "VERSION=$(date +'%Y-%m-%d-%H%M')" >> $GITHUB_ENV
 
-      # Build the Tauri app
+      # Build the app
       - name: Build the app
         run: npm run tauri build
 
-      # Find the generated .msi (PowerShell-compatible)
-      - name: Find MSI
+      # Find the MSI and zip it
+      - name: Find and zip MSI
         id: find_msi
         shell: pwsh
         run: |
           $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter *.msi | Select-Object -First 1
-          echo "MSI_PATH=$($msi.FullName)" >> $env:GITHUB_ENV
-          echo "MSI_NAME=$($msi.Name)" >> $env:GITHUB_ENV
+          $zipPath = "$($msi.DirectoryName)\$($msi.BaseName).zip"
+          Compress-Archive -Path $msi.FullName -DestinationPath $zipPath
+          echo "ZIP_PATH=$zipPath" >> $env:GITHUB_ENV
+          echo "ZIP_NAME=$($msi.BaseName).zip" >> $env:GITHUB_ENV
 
       # Create GitHub Release
       - name: Create Release
@@ -89,13 +103,24 @@ jobs:
           draft: false
           prerelease: false
 
-      # Upload the MSI to the release
-      - name: Upload MSI to Release
+      # Upload versioned ZIP (e.g., wuwa_moma-2025-05-26-1530.zip)
+      - name: Upload ZIP to Release (versioned)
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.MSI_PATH }}
-          asset_name: ${{ env.MSI_NAME }}
-          asset_content_type: application/x-msi
+          asset_path: ${{ env.ZIP_PATH }}
+          asset_name: ${{ env.ZIP_NAME }}
+          asset_content_type: application/zip
+
+      # Upload static 'wuwa_moma.zip' that always points to latest
+      - name: Upload ZIP to Release (wuwa_moma.zip)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ZIP_PATH }}
+          asset_name: wuwa_moma.zip
+          asset_content_type: application/zip

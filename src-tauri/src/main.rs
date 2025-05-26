@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 use serde::{Deserialize, Serialize};
-use tauri::command;
+use tauri::{command, Emitter};
 
 use std::collections::HashSet;
 use std::fs::{self, File};
@@ -11,6 +11,7 @@ use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 
 use base64::{engine::general_purpose, Engine as _};
+use futures_util::StreamExt;
 
 use enigo::{
     Direction::{Press, Release},
@@ -57,6 +58,12 @@ struct ModJson {
     version: String,
     category: String,
     url: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct DownloadProgress {
+    downloaded: u64,
+    total: u64,
 }
 
 fn load_categories() -> Vec<Category> {
@@ -290,7 +297,7 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
 }
 
 #[command]
-async fn download_mod(url: String, to: String) -> Result<(), String> {
+async fn download_mod(url: String, to: String, window: tauri::Window) -> Result<(), String> {
     const TIMEOUT_SECS: u64 = 120; // 2 minutes
     const MAX_SIZE: usize = 100 * 1024 * 1024; // 100 MB
 
@@ -317,77 +324,124 @@ async fn download_mod(url: String, to: String) -> Result<(), String> {
         ));
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Error reading body: {e}"))?;
+    // Try to get filename from Content-Disposition header
+    let filename = response
+        .headers()
+        .get("content-disposition")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|content| {
+            content
+                .split(';')
+                .find(|part| part.trim().starts_with("filename="))
+                .map(|filename| {
+                    filename
+                        .trim()
+                        .trim_start_matches("filename=")
+                        .trim_matches('"')
+                        .to_string()
+                })
+        })
+        // If no Content-Disposition, try the final URL (after redirects)
+        .unwrap_or_else(|| {
+            response
+                .url()
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .unwrap_or("")
+                .to_string()
+        });
 
-    if bytes.len() > MAX_SIZE {
+    // Get mod name from filename (remove extension)
+    let mod_name = if !filename.is_empty() {
+        filename.split('.').next().unwrap_or("mod").to_string()
+    } else {
+        format!("mod_{}", uuid::Uuid::new_v4())
+    };
+
+    let total_size = response.content_length().unwrap_or(0);
+    if total_size as usize > MAX_SIZE {
         return Err(format!(
             "File too large: {} > {} bytes",
-            bytes.len(),
-            MAX_SIZE
+            total_size, MAX_SIZE
         ));
     }
 
+    let mut downloaded: u64 = 0;
+    let mut bytes = Vec::new();
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Error downloading: {e}"))?;
+        downloaded += chunk.len() as u64;
+        bytes.extend_from_slice(&chunk);
+
+        window
+            .emit(
+                "download-progress",
+                DownloadProgress {
+                    downloaded,
+                    total: total_size,
+                },
+            )
+            .map_err(|e| format!("Failed to emit progress: {e}"))?;
+    }
+
+    // Try to handle as ZIP first
     let mut cursor = Cursor::new(&bytes);
     let mut magic = [0; 4];
-    cursor
-        .read_exact(&mut magic)
-        .map_err(|_| "Failed to read magic bytes")?;
-    if magic != [0x50, 0x4B, 0x03, 0x04] {
-        return Err("Not a valid ZIP file (missing PK header)".to_string());
-    }
+    let is_zip = cursor.read_exact(&mut magic).is_ok() && magic == [0x50, 0x4B, 0x03, 0x04];
 
-    let mut archive =
-        ZipArchive::new(Cursor::new(&bytes)).map_err(|e| format!("Failed to open ZIP: {e}"))?;
+    if is_zip {
+        // Handle ZIP file
+        let mut archive =
+            ZipArchive::new(Cursor::new(&bytes)).map_err(|e| format!("Failed to open ZIP: {e}"))?;
 
-    let mut root_dirs = HashSet::new();
-    for i in 0..archive.len() {
-        let file = archive.by_index(i).map_err(|e| e.to_string())?;
-        if let Some(component) = Path::new(file.name()).components().next() {
-            root_dirs.insert(component.as_os_str().to_owned());
-        }
-        if root_dirs.len() > 1 {
-            break;
-        }
-    }
+        let extract_to = PathBuf::from(&to).join(&mod_name);
+        fs::create_dir_all(&extract_to).map_err(|e| format!("Failed to create directory: {e}"))?;
 
-    let extract_to = if root_dirs.len() == 1 {
-        PathBuf::from(&to)
-    } else {
-        PathBuf::from(&to).join(format!("mod_{}", uuid::Uuid::new_v4()))
-    };
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+            let outpath = extract_to.join(file.name());
 
-    fs::create_dir_all(&extract_to).map_err(|e| format!("Failed to create directory: {e}"))?;
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-        let outpath = extract_to.join(file.name());
-
-        if file.name().ends_with('/') {
-            fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
-        } else {
-            if let Some(parent) = outpath.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            if file.name().ends_with('/') {
+                fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+            } else {
+                if let Some(parent) = outpath.parent() {
+                    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
+                std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
             }
-            let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
-    }
 
-    // Write mod.json (or update)
-    let mod_json_path = extract_to.join("mod.json");
-    let mut mod_json: ModJson = if mod_json_path.exists() {
-        let content = fs::read_to_string(&mod_json_path).unwrap_or_default();
-        serde_json::from_str(&content).unwrap_or_default()
+        // Write mod.json
+        let mod_json_path = extract_to.join("mod.json");
+        let mut mod_json: ModJson = if mod_json_path.exists() {
+            let content = fs::read_to_string(&mod_json_path).unwrap_or_default();
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            ModJson::default()
+        };
+
+        mod_json.url = url.clone();
+        let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
+        fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
     } else {
-        ModJson::default()
-    };
+        // Handle non-ZIP file
+        let mod_dir = PathBuf::from(&to).join(&mod_name);
+        fs::create_dir_all(&mod_dir).map_err(|e| format!("Failed to create directory: {e}"))?;
 
-    mod_json.url = url.clone();
-    let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
-    fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
+        let file_path = mod_dir.join(&filename);
+        fs::write(&file_path, bytes).map_err(|e| format!("Failed to write file: {e}"))?;
+
+        // Create mod.json
+        let mod_json = ModJson {
+            url: url.clone(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
+        fs::write(mod_dir.join("mod.json"), json).map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

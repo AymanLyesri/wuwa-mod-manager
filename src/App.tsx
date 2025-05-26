@@ -5,7 +5,6 @@ import { getFolderContents } from "./services/folder.service";
 import Header from "./components/Header";
 import ModInfoPanel from "./components/ModInfoPanel";
 import { deleteMod, setModInfo } from "./services/mod.service";
-import { Spinner } from "./components/Spinner";
 import { AnimatePresence } from "framer-motion";
 import { ToastContainer } from "react-toastify";
 
@@ -16,12 +15,31 @@ const App: React.FC = () => {
   const [modDirPath, setModDirPath] = useState<string>(
     localStorage.getItem("modDirPath") || ""
   );
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage for user preference or use system preference
+    if (typeof window !== "undefined") {
+      const savedPref = localStorage.getItem("darkMode");
+      if (savedPref !== null) return savedPref === "true";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (modDirPath) {
       fetchMods();
     }
   }, [modDirPath]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("darkMode", "true");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("darkMode", "false");
+    }
+  }, [darkMode]);
 
   const fetchMods = async () => {
     try {
@@ -62,8 +80,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
-      <Header refreshMods={fetchMods} setModDirPath={setModDirPath} />
-      <Spinner />
+      <Header
+        refreshMods={fetchMods}
+        setModDirPath={setModDirPath}
+        setDarkMode={setDarkMode}
+        darkMode={darkMode}
+      />
       <div className="flex flex-1 overflow-hidden relative flex-col lg:flex-row">
         <main
           className={`flex-1 overflow-y-auto ${
@@ -104,8 +126,9 @@ const App: React.FC = () => {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme="dark"
+          theme={darkMode ? "dark" : "light"}
           className="!-mb-4 sm:!-mb-0"
+          stacked
         />
 
         {isPanelOpen && selectedMod && (

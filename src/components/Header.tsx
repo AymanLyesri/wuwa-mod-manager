@@ -7,19 +7,17 @@ import { open } from "@tauri-apps/plugin-dialog";
 interface HeaderProps {
   refreshMods: () => void;
   setModDirPath: (path: string) => void;
+  darkMode: boolean;
+  setDarkMode: (darkMode: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ refreshMods, setModDirPath }) => {
+const Header: React.FC<HeaderProps> = ({
+  refreshMods,
+  setModDirPath,
+  darkMode,
+  setDarkMode,
+}) => {
   const [modUrl, setModUrl] = useState("");
-  const [darkMode, setDarkMode] = useState(() => {
-    // Check localStorage for user preference or use system preference
-    if (typeof window !== "undefined") {
-      const savedPref = localStorage.getItem("darkMode");
-      if (savedPref !== null) return savedPref === "true";
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return true;
-  });
 
   // Apply dark mode class to document
   useEffect(() => {
@@ -81,29 +79,35 @@ const Header: React.FC<HeaderProps> = ({ refreshMods, setModDirPath }) => {
   };
 
   return (
-    <header className={`
+    <header
+      className={`
       ${COLORS.background.card} backdrop-blur-sm border-b ${COLORS.border.panel}
       p-4 sticky top-0 z-50 ${TRANSITIONS.base}
-    `}>
-      <div className={`${STYLE.container} ${STYLE.flex.between} flex-col md:flex-row gap-4`}>
+    `}
+    >
+      <div
+        className={`${STYLE.container} ${STYLE.flex.between} flex-col md:flex-row gap-4`}
+      >
         {/* Logo/Title */}
-        <div className={STYLE.flex.center + ' group'}>
+        <div className={STYLE.flex.center + " group"}>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-600 dark:from-cyan-400 dark:to-purple-500 bg-clip-text text-transparent">
             WuWa - MoMa
           </h1>
-          <span className={`
+          <span
+            className={`
             ml-2 px-2 py-1 text-xs rounded-full
             bg-purple-100 dark:bg-purple-900/30 
             text-purple-700 dark:text-purple-300 
             border border-purple-200 dark:border-purple-800/50 
             group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 
             ${TRANSITIONS.base}
-          `}>
+          `}
+          >
             Beta
           </span>
         </div>
 
-        <div className={STYLE.flex.center + ' gap-4'}>
+        <div className={STYLE.flex.center + " gap-4"}>
           {/* Theme Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
@@ -139,90 +143,151 @@ const Header: React.FC<HeaderProps> = ({ refreshMods, setModDirPath }) => {
             )}
           </button>
 
-          <div className={STYLE.flex.column + ' sm:flex-row gap-2'}>
-            {/* Select Folder Button */}
-            <button
-              onClick={handleSelectFolder}
-              className={`
-                ${STYLE.button.secondary} gap-2
-                hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
-                ${TRANSITIONS.transform}
-              `}
+          {/* Select Folder Button */}
+          <button
+            onClick={handleSelectFolder}
+            className={`
+              ${STYLE.button.secondary} gap-2
+              hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+              ${TRANSITIONS.transform}
+            `}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-purple-500 dark:text-purple-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-purple-500 dark:text-purple-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Select Folder</span>
-            </button>
+              <path
+                fillRule="evenodd"
+                d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>Select Home Folder</span>
+          </button>
 
-            {/* Add Mod Popover */}
-            <Popover>
-              <PopoverButton className={`
-                ${STYLE.flex.center} gap-2 px-4 py-2 rounded-lg font-medium
-                bg-gradient-to-r from-cyan-500 to-blue-500 
-                dark:from-cyan-600 dark:to-blue-600 
-                hover:from-cyan-400 hover:to-blue-400 
-                dark:hover:from-cyan-500 dark:hover:to-blue-500 
-                text-white
-                hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
-                ${TRANSITIONS.transform}
-              `}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
+          {/* Add Mod Popover */}
+          <Popover className="relative">
+            {({ close }) => (
+              <>
+                <PopoverButton
+                  className={`
+                  ${STYLE.flex.center} gap-2 px-4 py-2 rounded-lg font-medium
+                  bg-gradient-to-r from-cyan-500 to-blue-500 
+                  dark:from-cyan-600 dark:to-blue-600 
+                  hover:from-cyan-400 hover:to-blue-400 
+                  dark:hover:from-cyan-500 dark:hover:to-blue-500 
+                  text-white
+                  hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+                  ${TRANSITIONS.transform}
+                `}
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Add Mod</span>
-              </PopoverButton>
-
-              <PopoverPanel className={`
-                ${STYLE.panel} absolute z-10 right-0 mt-2 w-96
-                ${STYLE.flex.column} gap-5
-              `}>
-                <div className={STYLE.flex.column + ' gap-2'}>
-                  <input
-                    type="text"
-                    value={modUrl}
-                    onChange={(e) => setModUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleDownloadMod()}
-                    placeholder="Mod URL (download/file)"
-                    className={STYLE.input}
-                    autoFocus
-                  />
-
-                  <button
-                    onClick={handleDownloadMod}
-                    className={STYLE.button.primary + ' w-full'}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    Add
-                  </button>
+                    <path
+                      fillRule="evenodd"
+                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Add Mod</span>
+                </PopoverButton>
 
-                  <button
-                    className={STYLE.button.secondary + ' w-full'}
-                    onClick={handleAddMod}
-                  >
-                    Choose File
-                  </button>
-                </div>
-              </PopoverPanel>
-            </Popover>
-          </div>
+                <PopoverPanel
+                  className={`
+                  absolute right-0 mt-2 w-80 z-10 
+                  ${COLORS.background.panel} rounded-xl ${COLORS.border.panel} ${COLORS.shadow.panel}
+                  p-4 space-y-4
+                `}
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <label className={STYLE.text.label}>Add from URL</label>
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={modUrl}
+                          onChange={(e) => setModUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleDownloadMod();
+                              close();
+                            }
+                          }}
+                          placeholder="Enter mod URL..."
+                          className={STYLE.input}
+                        />
+                        <button
+                          onClick={() => {
+                            handleDownloadMod();
+                            close();
+                          }}
+                          className={STYLE.button.primary}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <div
+                        className="absolute inset-0 flex items-center"
+                        aria-hidden="true"
+                      >
+                        <div
+                          className={`w-full border-t ${COLORS.border.panel}`}
+                        />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span
+                          className={`px-2 ${COLORS.background.panel} text-sm ${COLORS.text.secondary}`}
+                        >
+                          or
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={STYLE.text.label}>
+                        Add from folder
+                      </label>
+                      <button
+                        onClick={() => {
+                          handleAddMod();
+                          close();
+                        }}
+                        className={`
+                          ${STYLE.button.secondary} w-full mt-1 gap-2
+                          hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+                          ${TRANSITIONS.transform}
+                        `}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z"
+                            clipRule="evenodd"
+                          />
+                          <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
+                        </svg>
+                        <span>Select Folder</span>
+                      </button>
+                    </div>
+                  </div>
+                </PopoverPanel>
+              </>
+            )}
+          </Popover>
         </div>
       </div>
     </header>

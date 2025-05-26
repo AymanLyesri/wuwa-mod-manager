@@ -117,6 +117,10 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     e.preventDefault();
   }, []);
 
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLDivElement>) => {
       const file =
@@ -187,9 +191,12 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
               aspect-video sm:aspect-[16/9]
               mx-3 sm:mx-4 mt-3 sm:mt-4
               max-w-[calc(100%-24px)]
+              cursor-pointer
             `}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onClick={handleThumbnailChange}
             onPaste={handlePaste}
             title="Drag or paste image to change"
             tabIndex={0}
@@ -254,7 +261,8 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             <div
               className={`
                 absolute inset-0 ${STYLE.flex.center} bg-black/40 backdrop-blur-[2px] rounded-2xl
-                opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10
+                opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10
+                pointer-events-none
               `}
             >
               <div className={STYLE.flex.center + " flex-col"}>
@@ -272,39 +280,40 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                   />
                 </svg>
                 <p className="text-white text-sm sm:text-base">
-                  Click to change image
+                  Paste or Drag image
                 </p>
               </div>
             </div>
           </div>
 
           {/* Upload button */}
-          <button
-            onClick={handleThumbnailChange}
-            className={`
-              absolute bottom-6 right-6 z-20
-              ${STYLE.button.primary}
-              text-sm sm:text-base
-              py-1.5 sm:py-2 px-3 sm:px-4
-              bg-black/50 hover:bg-black/60
-              backdrop-blur-sm
-            `}
-          >
-            <svg
-              className="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="absolute bottom-2 right-4 flex justify-end z-20">
+            <button
+              onClick={handleThumbnailChange}
+              className={`
+                ${STYLE.button.primary}
+                text-sm sm:text-base
+                py-1.5 sm:py-2 px-3 sm:px-4
+                bg-black/50 hover:bg-black/60
+                backdrop-blur-sm
+              `}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            <span>Upload</span>
-          </button>
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              <span>Upload</span>
+            </button>
+          </div>
         </div>
 
         {/* Form */}
