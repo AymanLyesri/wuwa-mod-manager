@@ -88,7 +88,7 @@ jobs:
         run: |
           $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter *.msi | Select-Object -First 1
           $zipPath = "$($msi.DirectoryName)\$($msi.BaseName).zip"
-          Compress-Archive -Path $msi.FullName -DestinationPath $zipPath
+          Compress-Archive -Path $msi.FullName -DestinationPath $zipPath -Force
           echo "ZIP_PATH=$zipPath" >> $env:GITHUB_ENV
           echo "ZIP_NAME=$($msi.BaseName).zip" >> $env:GITHUB_ENV
 
