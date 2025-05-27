@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Mod } from "../interfaces/Mod.interface";
-import { STYLE, TRANSITIONS, COLORS } from "../constants/styling.constant";
+import { STYLE, COLORS } from "../constants/styling.constant";
 
 interface Props {
   mods: Mod[];
