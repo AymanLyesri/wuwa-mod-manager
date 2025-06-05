@@ -4,6 +4,7 @@ import { Mod } from "../interfaces/Mod.interface";
 import { STYLE, TRANSITIONS } from "../constants/styling.constant";
 import { motion } from "framer-motion";
 import FilterMods from "./Filter";
+import PresetComponent from "./Preset";
 import Masonry from "react-masonry-css";
 
 interface ModGridProps {
@@ -28,6 +29,43 @@ const ModGrid: React.FC<ModGridProps> = ({
   const [filteredMods, setFilteredMods] = useState<Mod[]>(mods);
   const [isCompact, setIsCompact] = useState(false);
   const observerTarget = useRef(null);
+
+  // Apply saved filters when mods change
+  useEffect(() => {
+    const savedFilters = localStorage.getItem("modFilters");
+    const savedSort = localStorage.getItem("modSort");
+
+    if (savedFilters || savedSort) {
+      const filters = savedFilters ? JSON.parse(savedFilters) : {};
+      const sortMethod = savedSort || "name-asc";
+
+      let filtered = mods.filter((mod) =>
+        Object.entries(filters).every(
+          ([k, v]) => v === "" || mod[k as keyof Mod]?.toString() === v
+        )
+      );
+
+      filtered = [...filtered].sort((a, b) => {
+        const [sortKey, sortDirection] = sortMethod.split("-");
+        if (sortKey === "enabled") {
+          return sortDirection === "asc"
+            ? Number(a.enabled) - Number(b.enabled)
+            : Number(b.enabled) - Number(a.enabled);
+        }
+
+        const aValue = a[sortKey as keyof Mod]?.toString().toLowerCase() || "";
+        const bValue = b[sortKey as keyof Mod]?.toString().toLowerCase() || "";
+
+        return sortDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      });
+
+      setFilteredMods(filtered);
+    } else {
+      setFilteredMods(mods);
+    }
+  }, [mods]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -66,6 +104,24 @@ const ModGrid: React.FC<ModGridProps> = ({
     if (!isSelectMode) {
       setSelectedMods([]);
     }
+  };
+
+  const handleApplyPreset = async () => {
+    // Update all mods based on the preset
+    // for (const mod of mods) {
+    //   const shouldBeEnabled = modIds.includes(mod.id);
+    //   if (mod.enabled !== shouldBeEnabled) {
+    //     try {
+    //       await onUpdateMod({ ...mod, enabled: shouldBeEnabled });
+    //     } catch (error) {
+    //       console.error(`Failed to update mod ${mod.name}:`, error);
+    //       // Continue with other mods even if one fails
+    //       continue;
+    //     }
+    //   }
+    // }
+    // Refresh the mods list to ensure we have the latest state
+    await fetchMods();
   };
 
   return (
@@ -124,38 +180,14 @@ const ModGrid: React.FC<ModGridProps> = ({
                       clipRule="evenodd"
                     />
                   </svg>
-                  <span>{mods.filter((m) => m.enabled).length} enabled</span>
+                  <span>
+                    {mods.filter((mod) => mod.enabled).length} mods enabled
+                  </span>
                 </div>
-
-                {/* Mod Directory Path */}
-                {modDirPath && (
-                  <div
-                    className={`${STYLE.text.label} ${STYLE.flex.center} gap-1.5 max-w-full`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 flex-shrink-0"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span
-                      className="truncate max-w-[120px] xs:max-w-[180px] sm:max-w-xs lg:max-w-md"
-                      title={modDirPath}
-                    >
-                      {modDirPath}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Action Buttons Section */}
+            {/* Actions Section */}
             <div
               className={
                 STYLE.flex.center +
@@ -183,6 +215,14 @@ const ModGrid: React.FC<ModGridProps> = ({
               </button>
 
               <div className="p-0">
+                <PresetComponent
+                  mods={mods}
+                  onApplyPreset={handleApplyPreset}
+                  modDirPath={modDirPath}
+                />
+              </div>
+
+              <div className="p-0">
                 <FilterMods mods={mods} onFilter={setFilteredMods} />
               </div>
 
@@ -206,27 +246,25 @@ const ModGrid: React.FC<ModGridProps> = ({
                 <span>{isSelectMode ? "Cancel" : "Select"}</span>
               </button>
 
-              {/* Delete Selected (when in select mode) */}
+              {/* Delete Selected Button */}
               {isSelectMode && selectedMods.length > 0 && (
                 <button
                   onClick={handleDeleteSelected}
-                  className={`${STYLE.button.primary} bg-rose-500 hover:bg-rose-600`}
+                  className={STYLE.button.secondary + " !bg-red-500 text-white"}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      fillRule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clipRule="evenodd"
                     />
                   </svg>
-                  <span>Delete ({selectedMods.length})</span>
+                  <span>Delete {selectedMods.length} Selected</span>
                 </button>
               )}
             </div>
@@ -234,7 +272,7 @@ const ModGrid: React.FC<ModGridProps> = ({
         </div>
       </div>
 
-      {/* Mod Grid using Masonry */}
+      {/* Mods Grid */}
       <div className="max-w-7xl mx-auto px-4">
         <Masonry
           breakpointCols={{

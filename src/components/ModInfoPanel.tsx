@@ -196,7 +196,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
-            onClick={handleThumbnailChange}
             onPaste={handlePaste}
             title="Drag or paste image to change"
             tabIndex={0}
@@ -251,9 +250,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                <span className={STYLE.text.caption + " text-sm sm:text-base"}>
-                  Drop image here or click to browse
-                </span>
               </div>
             )}
 
@@ -266,21 +262,8 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
               `}
             >
               <div className={STYLE.flex.center + " flex-col"}>
-                <svg
-                  className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-3 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
                 <p className="text-white text-sm sm:text-base">
-                  Paste or Drag image
+                  Paste or Drag image (click to focus)
                 </p>
               </div>
             </div>

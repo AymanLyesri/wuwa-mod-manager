@@ -5,12 +5,14 @@
 use serde::{Deserialize, Serialize};
 use tauri::{command, Emitter};
 
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::StreamExt;
+use uuid::Uuid;
 
 use enigo::{
     Direction::{Press, Release},
@@ -52,6 +54,7 @@ pub struct Mod {
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct ModJson {
+    id: String,
     author: String,
     description: String,
     version: String,
@@ -63,6 +66,17 @@ struct ModJson {
 struct DownloadProgress {
     downloaded: u64,
     total: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ModPreset {
+    name: String,
+    enabled_mods: Vec<String>, // List of mod IDs that are enabled in this preset
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct Presets {
+    presets: HashMap<String, ModPreset>, // Map of preset ID to preset
 }
 
 fn load_categories() -> Vec<Category> {
@@ -102,11 +116,7 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
     // This regex captures the version number in the format "vX.X" or ".X.X"
     let version_regex = Regex::new(r"(?i)v?\.?(\d+\.\d+)").unwrap();
 
-    // Regex to check if a string is a number
-    let number_regex = Regex::new(r"^\d+$").unwrap();
-
     let mut mods = Vec::new();
-    let mut next_id = 1;
 
     for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -145,6 +155,17 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
             ModJson::default()
         };
 
+        // Generate a new ID if one doesn't exist
+        if details.id.is_empty() {
+            details.id = Uuid::new_v4().to_string();
+            // Save the updated mod.json with the new ID
+            if let Ok(json) = serde_json::to_string_pretty(&details) {
+                if let Err(e) = fs::write(&details_path, json) {
+                    eprintln!("Failed to write mod.json: {}", e);
+                }
+            }
+        }
+
         // Extract version from folder name if not available in mod.json
         let version = if !details.version.is_empty() {
             details.version
@@ -155,20 +176,6 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
                 .map(|m| m.as_str().to_string())
                 .unwrap_or_else(|| "".to_string())
         };
-
-        // Set ID: if current ID is numeric, keep it; otherwise assign next sequential ID
-        let id = if number_regex.is_match(&name) {
-            name.clone()
-        } else {
-            next_id.to_string()
-        };
-
-        // Increment next_id if we used it or if the current numeric ID is >= next_id
-        if let Ok(current_id) = name.parse::<i32>() {
-            next_id = std::cmp::max(next_id, current_id + 1);
-        } else {
-            next_id += 1;
-        }
 
         let name = display_name.clone();
 
@@ -186,7 +193,7 @@ fn get_folder_mods(path: String) -> Result<Vec<Mod>, String> {
         let url = details.url;
 
         mods.push(Mod {
-            id,
+            id: details.id,
             name,
             path: path.to_string_lossy().to_string(),
             author,
@@ -240,6 +247,7 @@ fn set_mod_info(mod_data: Mod) -> Result<Mod, String> {
     }
 
     let details = ModJson {
+        id: mod_data.id.clone(),
         author: mod_data.author.clone(),
         version: mod_data.version.clone(),
         description: mod_data.description.clone(),
@@ -440,6 +448,9 @@ async fn download_mod(url: String, to: String, window: tauri::Window) -> Result<
         };
 
         mod_json.url = url.clone();
+        if mod_json.id.is_empty() {
+            mod_json.id = Uuid::new_v4().to_string();
+        }
         let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
         fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
     } else {
@@ -452,6 +463,7 @@ async fn download_mod(url: String, to: String, window: tauri::Window) -> Result<
 
         // Create mod.json
         let mod_json = ModJson {
+            id: Uuid::new_v4().to_string(),
             url: url.clone(),
             ..Default::default()
         };
@@ -533,6 +545,210 @@ fn send_f10() {
     enigo.key(Key::F10, Release).unwrap();
 }
 
+#[command]
+fn save_preset(path: String, preset_name: String, enabled_mods: Vec<String>) -> Result<(), String> {
+    let dir = Path::new(&path);
+    let presets_path = dir.join("presets.json");
+
+    // Load existing presets or create new
+    let mut presets = if presets_path.exists() {
+        let content = fs::read_to_string(&presets_path)
+            .map_err(|e| format!("Failed to read presets.json: {}", e))?;
+        serde_json::from_str::<Presets>(&content)
+            .map_err(|e| format!("Failed to parse presets.json: {}", e))?
+    } else {
+        Presets::default()
+    };
+
+    // Check if a preset with this name already exists
+    let existing_preset_id = presets
+        .presets
+        .iter()
+        .find(|(_, preset)| preset.name == preset_name)
+        .map(|(id, _)| id.clone());
+
+    let preset_id = existing_preset_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let new_preset = ModPreset {
+        name: preset_name,
+        enabled_mods,
+    };
+
+    // Add or update the preset
+    presets.presets.insert(preset_id, new_preset);
+
+    // Save back to file
+    let json = serde_json::to_string_pretty(&presets)
+        .map_err(|e| format!("Failed to serialize presets: {}", e))?;
+    fs::write(&presets_path, json).map_err(|e| format!("Failed to write presets.json: {}", e))?;
+
+    Ok(())
+}
+
+#[command]
+fn get_presets(path: String) -> Result<HashMap<String, ModPreset>, String> {
+    let dir = Path::new(&path);
+    let presets_path = dir.join("presets.json");
+
+    if !presets_path.exists() {
+        return Ok(HashMap::new());
+    }
+
+    let content = fs::read_to_string(&presets_path)
+        .map_err(|e| format!("Failed to read presets.json: {}", e))?;
+    let presets: Presets = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse presets.json: {}", e))?;
+
+    Ok(presets.presets)
+}
+
+#[command]
+fn delete_preset(path: String, preset_id: String) -> Result<(), String> {
+    let dir = Path::new(&path);
+    let presets_path = dir.join("presets.json");
+
+    if !presets_path.exists() {
+        return Err("Presets file does not exist".to_string());
+    }
+
+    let content = fs::read_to_string(&presets_path)
+        .map_err(|e| format!("Failed to read presets.json: {}", e))?;
+    let mut presets: Presets = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse presets.json: {}", e))?;
+
+    if presets.presets.remove(&preset_id).is_none() {
+        return Err("Preset not found".to_string());
+    }
+
+    let json = serde_json::to_string_pretty(&presets)
+        .map_err(|e| format!("Failed to serialize presets: {}", e))?;
+    fs::write(&presets_path, json).map_err(|e| format!("Failed to write presets.json: {}", e))?;
+
+    Ok(())
+}
+
+#[command]
+fn apply_preset(path: String, preset_id: String) -> Result<(), String> {
+    println!("Applying preset {} to path {}", preset_id, path);
+
+    let dir = Path::new(&path);
+    let presets_path = dir.join("presets.json");
+
+    // Verify presets file exists
+    if !presets_path.exists() {
+        return Err(format!("Presets file not found at {:?}", presets_path));
+    }
+
+    // Load presets
+    let content = fs::read_to_string(&presets_path)
+        .map_err(|e| format!("Failed to read presets.json: {}", e))?;
+
+    println!("Loaded presets file content");
+
+    let presets: Presets = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse presets.json: {}", e))?;
+
+    // Get the specified preset
+    let preset = presets
+        .presets
+        .get(&preset_id)
+        .ok_or_else(|| format!("Preset {} not found in presets file", preset_id))?;
+
+    println!(
+        "Found preset '{}' with {} enabled mods",
+        preset.name,
+        preset.enabled_mods.len()
+    );
+
+    // Get all mods in the directory
+    let mods = get_folder_mods(path.clone())?;
+    println!("Found {} total mods in directory", mods.len());
+
+    // For each mod, enable/disable based on preset
+    for mod_entry in mods {
+        let mod_path = Path::new(&mod_entry.path);
+        println!("Processing mod: {} (ID: {})", mod_entry.name, mod_entry.id);
+
+        // Skip if mod directory doesn't exist
+        if !mod_path.exists() || !mod_path.is_dir() {
+            println!("Skipping non-existent mod directory: {:?}", mod_path);
+            continue;
+        }
+
+        let should_be_enabled = preset.enabled_mods.contains(&mod_entry.id);
+        println!(
+            "Mod {} should be {}",
+            mod_entry.id,
+            if should_be_enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
+
+        if mod_entry.enabled == should_be_enabled {
+            println!("Mod {} is already in correct state", mod_entry.id);
+            continue;
+        }
+
+        let current_name = match mod_path.file_name().and_then(|n| n.to_str()) {
+            Some(name) => name.to_string(),
+            None => {
+                println!("Failed to get filename for mod at {:?}", mod_path);
+                continue;
+            }
+        };
+
+        let new_name = if should_be_enabled {
+            if current_name.starts_with("disabled ") {
+                current_name[9..].to_string() // Remove "disabled " prefix
+            } else {
+                current_name.clone()
+            }
+        } else {
+            if !current_name.starts_with("disabled ") {
+                format!("disabled {}", current_name)
+            } else {
+                current_name.clone()
+            }
+        };
+
+        if current_name != new_name {
+            if let Some(parent) = mod_path.parent() {
+                let new_path = parent.join(&new_name);
+                println!("Renaming mod from '{}' to '{}'", current_name, new_name);
+
+                // Check if target path already exists
+                if new_path.exists() {
+                    println!(
+                        "Warning: Target path {:?} already exists, skipping rename",
+                        new_path
+                    );
+                    continue;
+                }
+
+                match fs::rename(mod_path, &new_path) {
+                    Ok(_) => println!("Successfully renamed mod directory"),
+                    Err(e) => {
+                        println!(
+                            "Failed to rename mod directory from {:?} to {:?}: {}",
+                            mod_path, new_path, e
+                        );
+                        return Err(format!(
+                            "Failed to rename mod '{}' while applying preset: {}",
+                            current_name, e
+                        ));
+                    }
+                }
+            } else {
+                println!("Failed to get parent directory for {:?}", mod_path);
+            }
+        }
+    }
+
+    println!("Successfully applied preset {}", preset_id);
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -545,7 +761,11 @@ fn main() {
             download_mod,
             delete_mod,
             send_f10,
-            add_mod
+            add_mod,
+            save_preset,
+            get_presets,
+            delete_preset,
+            apply_preset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

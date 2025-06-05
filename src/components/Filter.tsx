@@ -15,17 +15,33 @@ const sortOptions = [
   { value: "author-desc", label: "Author (Z-A)" },
   { value: "version-asc", label: "Version (Low-High)" },
   { value: "version-desc", label: "Version (High-Low)" },
+  { value: "enabled-asc", label: "Status (Disabled First)" },
+  { value: "enabled-desc", label: "Status (Enabled First)" },
 ];
 
 const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
   const [filters, setFilters] = useState<Partial<Record<keyof Mod, string>>>(
-    {}
+    () => {
+      const savedFilters = localStorage.getItem("modFilters");
+      return savedFilters ? JSON.parse(savedFilters) : {};
+    }
   );
-  const [sortMethod, setSortMethod] = useState<string>("name-asc");
+
+  const [sortMethod, setSortMethod] = useState<string>(() => {
+    return localStorage.getItem("modSort") || "name-asc";
+  });
 
   useEffect(() => {
     applyFiltersAndSorting(filters, sortMethod);
   }, [mods]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    localStorage.setItem("modFilters", JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    localStorage.setItem("modSort", sortMethod);
+  }, [sortMethod]);
 
   const filterOptions = useMemo(() => {
     const keysToFilter: (keyof Mod)[] = [
@@ -90,6 +106,8 @@ const FilterMods: React.FC<Props> = ({ mods, onFilter }) => {
   const resetFilters = () => {
     setFilters({});
     setSortMethod("name-asc");
+    localStorage.removeItem("modFilters");
+    localStorage.removeItem("modSort");
     onFilter(mods);
   };
 
