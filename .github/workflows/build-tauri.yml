@@ -62,6 +62,19 @@ jobs:
             cargo install tauri-cli
           fi
 
+      - name: Install system dependencies (glib, pkg-config, etc.)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libssl-dev \
+            build-essential \
+            ca-certificates
+
       - name: Build the app
         run: npm run tauri build
 
