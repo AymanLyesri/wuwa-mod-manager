@@ -10,21 +10,17 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-
     steps:
-      # Checkout repo
       - name: Checkout
         uses: actions/checkout@v3
 
-      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18"
 
-      # Cache node_modules
       - name: Cache node_modules
         uses: actions/cache@v3
         with:
@@ -34,11 +30,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # Setup Rust
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Cache Cargo registry and target
       - name: Cache Rust dependencies
         uses: actions/cache@v3
         with:
@@ -50,7 +44,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # Cache Cargo bin (tauri-cli)
       - name: Cache Cargo bin
         uses: actions/cache@v3
         with:
@@ -59,11 +52,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-bin-
 
-      # Install dependencies
       - name: Install npm dependencies
         run: npm ci
 
-      # Check/install Tauri CLI
       - name: Install Tauri CLI if not present
         shell: bash
         run: |
@@ -71,17 +62,9 @@ jobs:
             cargo install tauri-cli
           fi
 
-      # Generate a timestamp-based version
-      - name: Set version from date
-        id: version
-        shell: bash
-        run: echo "VERSION=$(date +'%Y-%m-%d-%H%M')" >> $GITHUB_ENV
-
-      # Build the app
       - name: Build the app
         run: npm run tauri build
 
-      # Find the MSI and zip it
       - name: Find and zip MSI
         id: find_msi
         shell: pwsh
@@ -89,10 +72,128 @@ jobs:
           $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter *.msi | Select-Object -First 1
           $zipPath = "$($msi.DirectoryName)\$($msi.BaseName).zip"
           Compress-Archive -Path $msi.FullName -DestinationPath $zipPath -Force
+          echo "MSI_PATH=$($msi.FullName)" >> $env:GITHUB_ENV
           echo "ZIP_PATH=$zipPath" >> $env:GITHUB_ENV
           echo "ZIP_NAME=$($msi.BaseName).zip" >> $env:GITHUB_ENV
 
-      # Create GitHub Release
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-artifacts
+          path: |
+            ${{ env.MSI_PATH }}
+            ${{ env.ZIP_PATH }}
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Cargo bin
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-tauri-cli
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI if not present
+        shell: bash
+        run: |
+          if !(cargo tauri --version > /dev/null 2>&1); then
+            cargo install tauri-cli
+          fi
+
+      - name: Build the app
+        run: npm run tauri build
+
+      - name: Find AppImage and zip
+        id: find_appimage
+        shell: bash
+        run: |
+          appimage=$(find src-tauri/target/release/bundle -type f -name '*.AppImage' | head -n 1)
+          if [ -z "$appimage" ]; then
+            echo "No AppImage found" >&2
+            exit 1
+          fi
+          zipPath="${appimage%.*}.zip"
+          zip -j "$zipPath" "$appimage"
+          echo "APPIMAGE_PATH=$appimage" >> $GITHUB_ENV
+          echo "ZIP_PATH=$zipPath" >> $GITHUB_ENV
+          echo "ZIP_NAME=$(basename "$zipPath")" >> $GITHUB_ENV
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-artifacts
+          path: |
+            ${{ env.APPIMAGE_PATH }}
+            ${{ env.ZIP_PATH }}
+
+  create_release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-artifacts
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-artifacts
+
+      - name: Find downloaded files
+        id: find_downloads
+        shell: bash
+        run: |
+          windows_msi=$(find windows-artifacts -type f -name '*.msi' | head -n 1 || true)
+          windows_zip=$(find windows-artifacts -type f -name '*.zip' | head -n 1 || true)
+          linux_appimage=$(find linux-artifacts -type f -name '*.AppImage' | head -n 1 || true)
+          linux_zip=$(find linux-artifacts -type f -name '*.zip' | head -n 1 || true)
+          echo "WINDOWS_MSI=$windows_msi" >> $GITHUB_ENV
+          echo "WINDOWS_ZIP=$windows_zip" >> $GITHUB_ENV
+          echo "LINUX_APPIMAGE=$linux_appimage" >> $GITHUB_ENV
+          echo "LINUX_ZIP=$linux_zip" >> $GITHUB_ENV
+
+      - name: Set version from date
+        id: version
+        shell: bash
+        run: echo "VERSION=$(date +'%Y-%m-%d-%H%M')" >> $GITHUB_ENV
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -104,24 +205,43 @@ jobs:
           draft: false
           prerelease: false
 
-      # Upload versioned ZIP (e.g., wuwa_moma-2025-05-26-1530.zip)
-      - name: Upload ZIP to Release (versioned)
+      - name: Upload Windows MSI to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ZIP_PATH }}
-          asset_name: ${{ env.ZIP_NAME }}
+          asset_path: ${{ env.WINDOWS_MSI }}
+          asset_name: $(basename ${{ env.WINDOWS_MSI }})
+          asset_content_type: application/x-msi
+
+      - name: Upload Windows ZIP to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.WINDOWS_ZIP }}
+          asset_name: $(basename ${{ env.WINDOWS_ZIP }})
           asset_content_type: application/zip
 
-      # Upload static 'wuwa_moma.zip' that always points to latest
-      - name: Upload ZIP to Release (wuwa_moma.zip)
+      - name: Upload Linux AppImage to Release
+        if: ${{ env.LINUX_APPIMAGE != '' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ZIP_PATH }}
-          asset_name: wuwa_moma.zip
+          asset_path: ${{ env.LINUX_APPIMAGE }}
+          asset_name: $(basename ${{ env.LINUX_APPIMAGE }})
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux ZIP to Release (versioned)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.LINUX_ZIP }}
+          asset_name: $(basename ${{ env.LINUX_ZIP }})
           asset_content_type: application/zip

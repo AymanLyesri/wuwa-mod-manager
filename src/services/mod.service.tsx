@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Mod } from "../interfaces/Mod.interface";
 import { toast } from "react-toastify";
-// import { reloadGame } from "./game.service";
 
 interface DownloadProgress {
   downloaded: number;
@@ -95,16 +94,16 @@ export const downloadMod = async (url: string, to: string) => {
   } catch (error) {
     // Cleanup listener if it exists
     try {
-      const unlisten = await listen("download-progress", () => {});
+      const unlisten = await listen("download-progress", () => { });
       unlisten();
-    } catch {}
+    } catch { }
 
     // Update toast on error
     toast.update(toastId, {
       render: "Error downloading mod",
       type: "error",
       isLoading: false,
-      autoClose: 1000,
+      autoClose: 10000,
     });
     throw error;
   }

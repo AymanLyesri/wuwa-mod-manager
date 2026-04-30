@@ -4,6 +4,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { setModThumbnail } from "../services/mod.service";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCategories } from "../services/category.service";
+import { getCharacters } from "../services/character.service";
+import { Character } from "../interfaces/Character.interface";
 import { COLORS, STYLE } from "../constants/styling.constant";
 import StatusButton from "./StatusButton";
 import { motion } from "framer-motion";
@@ -26,7 +28,8 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
   const [thumbnailBase64, setThumbnailBase64] = useState<string>("");
   const [displayThumbnail, setDisplayThumbnail] = useState<string>("");
   const thumbnailRefZone = useRef<HTMLDivElement>(null);
-  const categories = getCategories();
+  const staticCategories = getCategories();
+  const [characters, setCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
     setFocusedMod(mod);
@@ -35,6 +38,32 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
       thumbnailRefZone.current.focus();
     }
   }, [mod, isOpen]);
+
+  useEffect(() => {
+    let mounted = true;
+    getCharacters()
+      .then((list) => {
+        if (!mounted) return;
+        if (Array.isArray(list) && list.length) {
+          setCharacters(list);
+        } else {
+          // fallback to static categories as characters
+          setCharacters(
+            staticCategories.map((c) => ({ name: c.name, thumbnail: c.icon }))
+          );
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load characters, falling back:", err);
+        setCharacters(
+          staticCategories.map((c) => ({ name: c.name, thumbnail: c.icon }))
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleChange = useCallback(
     (
@@ -122,13 +151,68 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
   }, []);
 
   const handlePaste = useCallback(
-    (e: React.ClipboardEvent<HTMLDivElement>) => {
-      const file =
-        e.clipboardData.files?.[0] ||
-        Array.from(e.clipboardData.items)
-          .find((item) => item.type.startsWith("image/"))
-          ?.getAsFile();
-      if (file) handleImage(file);
+    async (e: React.ClipboardEvent<HTMLDivElement>) => {
+      console.log("Paste event detected");
+      e.preventDefault();
+      e.stopPropagation();
+
+      const items = e.clipboardData?.items;
+      console.log("Clipboard items:", items);
+
+      if (!items || items.length === 0) {
+        console.log("No items in clipboard");
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        console.log(`Item ${i}: type=${items[i].type}`);
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          console.log("Image file found:", file);
+          if (file) {
+            handleImage(file);
+            break;
+          }
+        }
+      }
+
+      const html = e.clipboardData?.getData("text/html") || "";
+      console.log("Clipboard HTML:", html);
+
+      if (!html) return;
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const imageElement = doc.querySelector("img");
+      const imageSrc = imageElement?.getAttribute("src") || "";
+
+      console.log("Extracted image src:", imageSrc);
+
+      if (!imageSrc) return;
+
+      if (imageSrc.startsWith("data:image/")) {
+        console.log("Using data URL from HTML clipboard");
+        handleImage(imageSrc);
+        return;
+      }
+
+      if (/^https?:\/\//i.test(imageSrc)) {
+        console.log("Fetching remote clipboard image:", imageSrc);
+        try {
+          const response = await fetch(imageSrc);
+          console.log("Clipboard image fetch response:", response.status);
+          if (!response.ok) return;
+
+          const blob = await response.blob();
+          console.log("Fetched clipboard image blob:", blob);
+          handleImage(
+            new File([blob], "pasted-image.png", {
+              type: blob.type || "image/png",
+            })
+          );
+        } catch (error) {
+          console.error("Error fetching clipboard image:", error);
+        }
+      }
     },
     [handleImage]
   );
@@ -201,21 +285,44 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             tabIndex={0}
           >
             {/* Category Icon */}
-            {focusedMod.category &&
-              categories.find((cat) => cat.name === focusedMod.category)
-                ?.icon && (
-                <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm p-2 sm:p-2.5 shadow-lg ring-1 ring-white/10">
-                  <img
-                    src={
-                      categories.find((cat) => cat.name === focusedMod.category)
-                        ?.icon
-                    }
-                    alt={focusedMod.category}
-                    className="w-5 h-5 sm:w-6 sm:h-6"
-                    title={focusedMod.category}
-                  />
-                </div>
-              )}
+            {focusedMod.category && (
+              (() => {
+                const match = characters.find(
+                  (c) => c.name === focusedMod.category
+                );
+                if (match && match.thumbnail) {
+                  return (
+                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm  shadow-lg ring-1 ring-white/10">
+                      <img
+                        src={match.thumbnail}
+                        alt={focusedMod.category}
+                        className="w-10 h-10 object-cover"
+                        title={focusedMod.category}
+                      />
+                    </div>
+                  );
+                }
+
+                // fallback to static category icon
+                const staticMatch = staticCategories.find(
+                  (cat) => cat.name === focusedMod.category
+                );
+                if (staticMatch && staticMatch.icon) {
+                  return (
+                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm p-2 sm:p-2.5 shadow-lg ring-1 ring-white/10">
+                      <img
+                        src={staticMatch.icon}
+                        alt={focusedMod.category}
+                        className="w-5 h-5 sm:w-6 sm:h-6"
+                        title={focusedMod.category}
+                      />
+                    </div>
+                  );
+                }
+
+                return null;
+              })()
+            )}
 
             {displayThumbnail ? (
               <>
@@ -346,7 +453,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 className={STYLE.select + " w-full"}
               >
                 <option value="">Select a category</option>
-                {categories.map((category) => (
+                {characters.map((category) => (
                   <option key={category.name} value={category.name}>
                     {category.name}
                   </option>

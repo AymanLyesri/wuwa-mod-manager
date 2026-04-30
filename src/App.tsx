@@ -7,6 +7,7 @@ import ModInfoPanel from "./components/ModInfoPanel";
 import { deleteMod, setModInfo } from "./services/mod.service";
 import { AnimatePresence } from "framer-motion";
 import { ToastContainer } from "react-toastify";
+import { getCharacters } from "./services/character.service";
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
@@ -30,6 +31,17 @@ const App: React.FC = () => {
       fetchMods();
     }
   }, [modDirPath]);
+
+  useEffect(() => {
+    const loadCharacters = async () => {
+      const characters = await getCharacters();
+      console.log("[characters] Loaded characters:", characters);
+    };
+
+    loadCharacters().catch((error) => {
+      console.error("[characters] Unexpected load failure:", error);
+    });
+  }, []);
 
   useEffect(() => {
     if (darkMode) {
@@ -88,9 +100,8 @@ const App: React.FC = () => {
       />
       <div className="flex-1 relative flex flex-col lg:flex-row">
         <main
-          className={`flex-1 ${
-            isPanelOpen ? "lg:pr-[450px]" : ""
-          } transition-all duration-300`}
+          className={`flex-1 ${isPanelOpen ? "lg:pr-[450px]" : ""
+            } transition-all duration-300`}
         >
           <AnimatePresence mode="wait">
             {modDirPath ? (

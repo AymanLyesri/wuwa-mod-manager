@@ -101,7 +101,8 @@ export const STYLE = {
 
   select: `relative w-full rounded-lg px-4 py-2.5 border ${COLORS.border.input} 
     ${COLORS.background.input} ${COLORS.text.primary} ${TRANSITIONS.interactive} 
-    cursor-pointer outline-none focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/50`,
+    cursor-pointer outline-none focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/50
+    appearance-none bg-[position:right_0.75rem_center] bg-no-repeat pr-10`,
 
   button: {
     primary: `relative px-5 py-2.5 rounded-lg font-semibold ${LAYOUT.flex.center}

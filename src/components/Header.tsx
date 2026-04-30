@@ -49,13 +49,17 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const handleDownloadMod = () => {
+  const handleDownloadMod = async () => {
     const modDirPath = localStorage.getItem("modDirPath");
     if (modUrl.trim() && modDirPath) {
-      downloadMod(modUrl, modDirPath).finally(() => {
+      try {
+        await downloadMod(modUrl, modDirPath);
+      } catch (error) {
+        console.error("Error downloading mod:", error);
+      } finally {
         setModUrl("");
         refreshMods();
-      });
+      }
     }
   };
 
@@ -69,9 +73,13 @@ const Header: React.FC<HeaderProps> = ({
       if (file) {
         const modDirPath = localStorage.getItem("modDirPath") || "";
         const selectedPath = file as string;
-        addMod(selectedPath, modDirPath).finally(() => {
+        try {
+          await addMod(selectedPath, modDirPath);
+        } catch (error) {
+          console.error("Error adding mod:", error);
+        } finally {
           refreshMods(); // Refresh mods after selecting a new folder
-        });
+        }
       }
     } catch (error) {
       console.error("Error selecting folder:", error);
