@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: liudonghua123/tauri-build:x86_64-latest
+      image: liudonghua123/tauri-build:latest
+      options: --platform linux/amd64
 
     steps:
       - name: Checkout
