@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/tauri-apps/tauri:latest
+      image: ghcr.io/liudonghua123/tauri-build:latest
 
     steps:
       - name: Checkout
