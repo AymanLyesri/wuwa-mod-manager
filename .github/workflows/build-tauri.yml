@@ -5,13 +5,23 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            bundles: appimage,deb
+          - os: windows-latest
+            bundles: msi
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -20,125 +30,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
+          cache: npm
 
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Install frontend dependencies
+        run: npm ci
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache Cargo bin
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-tauri-cli
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Tauri CLI if not present
-        shell: bash
-        run: |
-          if !(cargo tauri --version > /dev/null 2>&1); then
-            cargo install tauri-cli
-          fi
-
-      - name: Build the app
-        run: npm run tauri build
-
-      - name: Find and zip MSI
-        id: find_msi
-        shell: pwsh
-        run: |
-          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter *.msi | Select-Object -First 1
-          $zipPath = "$($msi.DirectoryName)\$($msi.BaseName).zip"
-          Compress-Archive -Path $msi.FullName -DestinationPath $zipPath -Force
-          echo "MSI_PATH=$($msi.FullName)" >> $env:GITHUB_ENV
-          echo "ZIP_PATH=$zipPath" >> $env:GITHUB_ENV
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-artifacts
-          path: |
-            ${{ env.MSI_PATH }}
-            ${{ env.ZIP_PATH }}
-
-  build-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache Cargo bin
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-tauri-cli
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Install Tauri CLI if not present
-        shell: bash
-        run: |
-          if !(cargo tauri --version > /dev/null 2>&1); then
-            cargo install tauri-cli
-          fi
-
-      - name: Install system dependencies
-        shell: bash
+      - name: Install Linux system dependencies
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -147,125 +49,27 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
             libssl-dev \
-            libxdo-dev \
-            build-essential \
-            ca-certificates
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
 
-          # 🔥 Critical fix for glib/pkg-config
-          export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-
-      - name: Verify pkg-config and glib
-        run: |
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
-          pkg-config --version
-          pkg-config --modversion glib-2.0
-
-      - name: Build the app
-        run: npm run tauri build
-
-      - name: Find AppImage and zip
-        id: find_appimage
-        shell: bash
-        run: |
-          appimage=$(find src-tauri/target/release/bundle -type f -name '*.AppImage' | head -n 1)
-          if [ -z "$appimage" ]; then
-            echo "No AppImage found" >&2
-            exit 1
-          fi
-          zipPath="${appimage%.*}.zip"
-          zip -j "$zipPath" "$appimage"
-          echo "APPIMAGE_PATH=$appimage" >> $GITHUB_ENV
-          echo "ZIP_PATH=$zipPath" >> $GITHUB_ENV
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+      - name: Build with Tauri Action (PR)
+        if: github.event_name == 'pull_request'
+        uses: tauri-apps/tauri-action@v0
         with:
-          name: linux-artifacts
-          path: |
-            ${{ env.APPIMAGE_PATH }}
-            ${{ env.ZIP_PATH }}
+          projectPath: .
+          args: --bundles ${{ matrix.bundles }}
 
-  create_release:
-    needs: [build-windows, build-linux]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-artifacts
-
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-artifacts
-
-      - name: Find downloaded files
-        id: find_downloads
-        shell: bash
-        run: |
-          windows_msi=$(find windows-artifacts -type f -name '*.msi' | head -n 1 || true)
-          windows_zip=$(find windows-artifacts -type f -name '*.zip' | head -n 1 || true)
-          linux_appimage=$(find linux-artifacts -type f -name '*.AppImage' | head -n 1 || true)
-          linux_zip=$(find linux-artifacts -type f -name '*.zip' | head -n 1 || true)
-
-          echo "WINDOWS_MSI=$windows_msi" >> $GITHUB_ENV
-          echo "WINDOWS_ZIP=$windows_zip" >> $GITHUB_ENV
-          echo "LINUX_APPIMAGE=$linux_appimage" >> $GITHUB_ENV
-          echo "LINUX_ZIP=$linux_zip" >> $GITHUB_ENV
-
-      - name: Set version from date
-        run: echo "VERSION=$(date +'%Y-%m-%d-%H%M')" >> $GITHUB_ENV
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Build and release with Tauri Action
+        if: github.event_name != 'pull_request'
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ env.VERSION }}
-          release_name: Release v${{ env.VERSION }}
-          draft: false
+          projectPath: .
+          args: --bundles ${{ matrix.bundles }}
+          tagName: app-v${{ github.run_number }}
+          releaseName: "App v${{ github.run_number }}"
+          releaseBody: "Automated release generated by GitHub Actions."
+          releaseDraft: false
           prerelease: false
-
-      - name: Upload Windows MSI
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.WINDOWS_MSI }}
-          asset_name: windows.msi
-          asset_content_type: application/x-msi
-
-      - name: Upload Windows ZIP
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.WINDOWS_ZIP }}
-          asset_name: windows.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux AppImage
-        if: ${{ env.LINUX_APPIMAGE != '' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.LINUX_APPIMAGE }}
-          asset_name: linux.AppImage
-          asset_content_type: application/octet-stream
-
-      - name: Upload Linux ZIP
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.LINUX_ZIP }}
-          asset_name: linux.zip
-          asset_content_type: application/zip
