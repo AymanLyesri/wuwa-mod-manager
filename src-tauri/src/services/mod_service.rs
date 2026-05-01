@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
+use std::process::Command;
 use std::path::{Path, PathBuf};
 
 use base64::{engine::general_purpose, Engine as _};
@@ -372,10 +373,20 @@ pub async fn download_mod(url: String, to: String, window: tauri::Window) -> Res
         .map_err(|e| format!("Failed to finalize download file: {e}"))?;
 
     let mut cursor = File::open(&temp_path).map_err(|e| format!("Failed to reopen download file: {e}"))?;
-    let mut magic = [0; 4];
-    let is_zip = cursor.read_exact(&mut magic).is_ok() && magic == [0x50, 0x4B, 0x03, 0x04];
+
+    // Read up to 8 bytes to detect file signature
+    let mut magic = [0u8; 8];
+    let n = cursor.read(&mut magic).unwrap_or(0);
+
+    let is_zip = n >= 4 && magic[0..4] == [0x50, 0x4B, 0x03, 0x04];
+    let is_7z = n >= 6 && magic[0..6] == [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
+    let is_rar_v4 = n >= 7 && magic[0..7] == [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00];
+    let is_rar_v5 = n >= 8 && magic[0..8] == [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00];
 
     if is_zip {
+        // Ensure cursor is at start for ZipArchive
+        cursor.seek(SeekFrom::Start(0)).map_err(|e| format!("Seek failed: {e}"))?;
+
         let mut archive = ZipArchive::new(cursor)
             .map_err(|e| format!("Failed to open ZIP: {e}"))?;
 
@@ -412,6 +423,51 @@ pub async fn download_mod(url: String, to: String, window: tauri::Window) -> Res
         fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
 
         let _ = fs::remove_file(&temp_path);
+    } else if is_7z || is_rar_v4 || is_rar_v5 {
+        // Prefer to use system `7z` for 7z/rar extraction
+        let temp = temp_path.clone();
+        let out_dir = mod_dir.clone();
+
+        let res = tokio::task::spawn_blocking(move || {
+            let status = Command::new("7z")
+                .arg("x")
+                .arg("-y")
+                .arg(format!("-o{}", out_dir.display()))
+                .arg(temp.to_string_lossy().to_string())
+                .output();
+            status
+        })
+        .await
+        .map_err(|e| format!("Failed to run extractor: {e}"))?;
+
+        match res {
+            Ok(output) => {
+                if !output.status.success() {
+                    return Err(format!(
+                        "7z extraction failed: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    ));
+                }
+                // write mod.json if missing
+                let mod_json_path = mod_dir.join("mod.json");
+                let mut mod_json: ModJson = if mod_json_path.exists() {
+                    let content = fs::read_to_string(&mod_json_path).unwrap_or_default();
+                    serde_json::from_str(&content).unwrap_or_default()
+                } else {
+                    ModJson::default()
+                };
+
+                mod_json.url = url.clone();
+                if mod_json.id.is_empty() {
+                    mod_json.id = Uuid::new_v4().to_string();
+                }
+                let json = serde_json::to_string_pretty(&mod_json).map_err(|e| e.to_string())?;
+                fs::write(&mod_json_path, json).map_err(|e| e.to_string())?;
+
+                let _ = fs::remove_file(&temp_path);
+            }
+            Err(e) => return Err(format!("Failed to execute 7z: {e}")),
+        }
     } else {
         let file_path = mod_dir.join(&filename);
         fs::rename(&temp_path, &file_path)

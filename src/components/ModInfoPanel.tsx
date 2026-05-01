@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Mod } from "../interfaces/Mod.interface";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { setModThumbnail } from "../services/mod.service";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCategories } from "../services/category.service";
@@ -217,6 +218,75 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     [handleImage]
   );
 
+  const handlePasteButton = useCallback(async () => {
+    // First try Tauri clipboard text (works in environments where navigator.clipboard.read is blocked)
+    try {
+      const text = await readText();
+      if (text) {
+        if (text.startsWith("data:image/")) {
+          handleImage(text);
+          return;
+        }
+
+        if (text.includes("<img")) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(text, "text/html");
+          const imageElement = doc.querySelector("img");
+          const imageSrc = imageElement?.getAttribute("src") || "";
+          if (imageSrc) {
+            if (imageSrc.startsWith("data:image/")) {
+              handleImage(imageSrc);
+              return;
+            }
+            if (/^https?:\/\//i.test(imageSrc)) {
+              const response = await fetch(imageSrc);
+              if (!response.ok) return;
+              const blob = await response.blob();
+              handleImage(
+                new File([blob], "pasted-image.png", { type: blob.type || "image/png" })
+              );
+              return;
+            }
+          }
+        }
+
+        if (/^https?:\/\//i.test(text)) {
+          const response = await fetch(text);
+          if (!response.ok) return;
+          const blob = await response.blob();
+          handleImage(new File([blob], "pasted-image.png", { type: blob.type || "image/png" }));
+          return;
+        }
+      }
+    } catch (err) {
+      console.debug("readText fallback did not yield image/text or failed:", err);
+    }
+
+    // As a fallback, try navigator.clipboard.read() for image items — this can throw NotAllowedError in some contexts
+    try {
+      const nav: any = navigator;
+      if (nav.clipboard && typeof nav.clipboard.read === "function") {
+        try {
+          const clipboardItems = await nav.clipboard.read();
+          for (const item of clipboardItems) {
+            for (const type of item.types) {
+              if (type.startsWith("image/")) {
+                const blob = await item.getType(type);
+                handleImage(new File([blob], "pasted-image.png", { type: blob.type || "image/png" }));
+                return;
+              }
+            }
+          }
+        } catch (innerErr) {
+          // Likely NotAllowedError — log and return silently
+          console.warn("navigator.clipboard.read() blocked or not allowed:", innerErr);
+        }
+      }
+    } catch (error) {
+      console.error("Error pasting image from clipboard:", error);
+    }
+  }, [handleImage]);
+
   if (!isOpen) return null;
 
   return (
@@ -376,8 +446,30 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             </div>
           </div>
 
-          {/* Upload button */}
-          <div className="absolute bottom-2 right-4 flex justify-end z-20">
+          <div className="absolute bottom-2 right-4 flex gap-2 items-center z-20">
+            <button
+              type="button"
+              onClick={handlePasteButton}
+              className={`
+                ${STYLE.button.primary}
+                text-sm sm:text-base
+                py-1.5 sm:py-2 px-3 sm:px-4
+                bg-cyan-600 hover:bg-cyan-700
+                backdrop-blur-sm
+              `}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 2h6a2 2 0 012 2v1H7V4a2 2 0 012-2zM7 8h10v10a2 2 0 01-2 2H9a2 2 0 01-2-2V8z" />
+              </svg>
+              <span>Paste</span>
+            </button>
+
             <button
               onClick={handleThumbnailChange}
               className={`

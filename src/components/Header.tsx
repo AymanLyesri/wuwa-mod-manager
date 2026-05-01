@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { COLORS, STYLE, TRANSITIONS } from "../constants/styling.constant";
 import { addMod, downloadMod } from "../services/mod.service";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
 
 interface HeaderProps {
   refreshMods: () => void;
@@ -49,17 +50,32 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const handleDownloadMod = async () => {
+  const downloadModFromUrl = async (url: string) => {
     const modDirPath = localStorage.getItem("modDirPath");
-    if (modUrl.trim() && modDirPath) {
+    const trimmedUrl = url.trim();
+
+    if (trimmedUrl && modDirPath) {
       try {
-        await downloadMod(modUrl, modDirPath);
+        await downloadMod(trimmedUrl, modDirPath);
       } catch (error) {
         console.error("Error downloading mod:", error);
       } finally {
         setModUrl("");
         refreshMods();
       }
+    }
+  };
+
+  const handleDownloadMod = async () => {
+    await downloadModFromUrl(modUrl);
+  };
+
+  const handlePasteMod = async () => {
+    try {
+      const clipboardUrl = await readText();
+      await downloadModFromUrl(clipboardUrl);
+    } catch (error) {
+      console.error("Error reading clipboard or downloading mod:", error);
     }
   };
 
@@ -241,6 +257,50 @@ const Header: React.FC<HeaderProps> = ({
                           Add
                         </button>
                       </div>
+                    </div>
+
+                    <div className="relative">
+                      <div
+                        className="absolute inset-0 flex items-center"
+                        aria-hidden="true"
+                      >
+                        <div
+                          className={`w-full border-t ${COLORS.border.panel}`}
+                        />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span
+                          className={`px-2 ${COLORS.background.panel} text-sm ${COLORS.text.secondary}`}
+                        >
+                          or
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={STYLE.text.label}>Quick Paste</label>
+                      <button
+                        onClick={() => {
+                          void handlePasteMod();
+                          close();
+                        }}
+                        className={`
+                          ${STYLE.button.primary} w-full mt-1 gap-2
+                          hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+                          ${TRANSITIONS.transform}
+                        `}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-cyan-500 dark:text-cyan-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M5 4a2 2 0 012-2h2a2 2 0 012 2h3a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v1h8V4a1 1 0 00-1-1h-2a1 1 0 01-1-1H8a1 1 0 01-1 1H7z" />
+                          <path d="M8 8a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                        </svg>
+                        <span>Paste from Clipboard</span>
+                      </button>
                     </div>
 
                     <div className="relative">
