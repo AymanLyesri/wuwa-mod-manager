@@ -31,6 +31,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Install system dependencies (xdg-open)
+        run: |
+          apt-get update
+          apt-get install -y xdg-utils
+
       - name: Build with Tauri Action (PR)
         if: github.event_name == 'pull_request'
         uses: tauri-apps/tauri-action@v0
