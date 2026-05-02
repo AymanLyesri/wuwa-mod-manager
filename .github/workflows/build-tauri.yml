@@ -166,9 +166,27 @@ jobs:
         id: version
         run: |
           TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#app-v}"
+
+          case "$TAG" in
+            refs/tags/*) TAG="${TAG#refs/tags/}" ;;
+          esac
+
+          if echo "$TAG" | grep -q '^app-v'; then
+            VERSION="${TAG#app-v}"
+          else
+            echo "No release tag found in ref; fetching latest release tag from GitHub API"
+            TAG=$(curl -s "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            VERSION="${TAG#app-v}"
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Debug resolved version
+        run: |
+          echo "Resolved tag: ${{ steps.version.outputs.tag }}"
+          echo "Resolved version: ${{ steps.version.outputs.version }}"
+          echo "Download URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/WuwaMoMa_${{ steps.version.outputs.version }}_amd64.AppImage"
 
       - name: Download AppImage
         run: |
