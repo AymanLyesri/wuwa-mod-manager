@@ -118,18 +118,18 @@ jobs:
   aur-update:
     needs: tauri-linux
     runs-on: ubuntu-latest
+    container: archlinux:latest
     if: github.event_name != 'pull_request'
 
     steps:
-      - name: Install deps
+      - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y git openssh-client curl
+          pacman -Syu --noconfirm --needed git openssh curl base-devel
 
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY_B64 }}" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
 
@@ -140,17 +140,17 @@ jobs:
           git config user.name "AymanLyesri"
           git config user.email "your@email.com"
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         run: |
           TAG="${GITHUB_REF_NAME}"
-          VERSION=$(echo "$TAG" | sed 's/^app-v//')
+          VERSION="${TAG#app-v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Download AppImage
         run: |
-          curl -L -o app.AppImage \
+          curl -fL -o app.AppImage \
             "https://github.com/AymanLyesri/wuwa-mod-manager/releases/download/${{ steps.version.outputs.tag }}/WuwaMoMa_${{ steps.version.outputs.version }}_amd64.AppImage"
 
       - name: Generate checksum
@@ -170,14 +170,25 @@ jobs:
 
           sed -i "s|sha256sums=.*|sha256sums=('${{ steps.sha.outputs.sha }}')|" PKGBUILD
 
-      - name: Update .SRCINFO
+      - name: Create build user
         run: |
-          cd aur
-          makepkg --printsrcinfo > .SRCINFO
+          useradd -m builder
+          passwd -d builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R builder:builder aur
 
-      - name: Commit & push
+      - name: Generate .SRCINFO
+        run: |
+          sudo -u builder bash -c "cd aur && makepkg --printsrcinfo > .SRCINFO"
+
+      - name: Commit & push if changed
         run: |
           cd aur
           git add PKGBUILD .SRCINFO
-          git commit -m "Update to ${{ steps.version.outputs.version }}" || echo "No changes"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update to ${{ steps.version.outputs.version }}"
+            git push
+          fi
