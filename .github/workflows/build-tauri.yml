@@ -130,27 +130,27 @@ jobs:
         run: |
           set -e
 
-          export HOME=/github/home
-          mkdir -p "$HOME/.ssh"
+          mkdir -p /root/.ssh
 
-          # Write private key
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY_B64 }}" | base64 -d > "$HOME/.ssh/id_ed25519"
-          chmod 600 "$HOME/.ssh/id_ed25519"
+          # Private key
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY_B64 }}" | base64 -d > /root/.ssh/id_ed25519
+          chmod 600 /root/.ssh/id_ed25519
 
-          # Known hosts (STRICT + deterministic)
-          ssh-keyscan -t ed25519 aur.archlinux.org > "$HOME/.ssh/known_hosts"
-          chmod 644 "$HOME/.ssh/known_hosts"
+          # Known hosts (overwrite, not append)
+          ssh-keyscan -t ed25519 aur.archlinux.org > /root/.ssh/known_hosts
+          chmod 644 /root/.ssh/known_hosts
 
-          # SSH config (this is the missing piece)
-          cat > "$HOME/.ssh/config" <<EOF
+          # SSH config (force identity usage)
+          cat > /root/.ssh/config <<EOF
           Host aur.archlinux.org
-            IdentityFile ~/.ssh/id_ed25519
+            IdentityFile /root/.ssh/id_ed25519
             User aur
+            IdentitiesOnly yes
             StrictHostKeyChecking yes
           EOF
 
-          chmod 600 "$HOME/.ssh/config"
-          
+          chmod 600 /root/.ssh/config
+
       - name: Debug SSH
         run: |
           ssh -vT aur@aur.archlinux.org || true
