@@ -128,16 +128,32 @@ jobs:
 
       - name: Setup SSH
         run: |
-          mkdir -p ~/.ssh
+          set -e
 
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY_B64 }}" | base64 -d > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          export HOME=/github/home
+          mkdir -p "$HOME/.ssh"
 
-          # Force known_hosts population (retry-safe)
-          ssh-keyscan -H aur.archlinux.org 2>/dev/null >> ~/.ssh/known_hosts
+          # Write private key
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY_B64 }}" | base64 -d > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
 
-          # Ensure permissions
-          chmod 644 ~/.ssh/known_hosts
+          # Known hosts (STRICT + deterministic)
+          ssh-keyscan -t ed25519 aur.archlinux.org > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+          # SSH config (this is the missing piece)
+          cat > "$HOME/.ssh/config" <<EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/id_ed25519
+            User aur
+            StrictHostKeyChecking yes
+          EOF
+
+          chmod 600 "$HOME/.ssh/config"
+          
+      - name: Debug SSH
+        run: |
+          ssh -vT aur@aur.archlinux.org || true
 
       - name: Clone AUR repo
         run: |
