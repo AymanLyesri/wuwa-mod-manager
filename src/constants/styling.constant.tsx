@@ -124,6 +124,9 @@ export const STYLE = {
 
   card: `group relative rounded-xl ${COLORS.background.card} ${COLORS.border.card} 
     ${COLORS.shadow.card} ${TRANSITIONS.base} p-6 space-y-4 overflow-hidden`,
+  // Apple-inspired card: larger radius, subtle glass, edge-to-edge image
+  cardApple: `group relative rounded-3xl ${COLORS.background.card} ${COLORS.border.card} 
+    ${COLORS.shadow.card} ${TRANSITIONS.base} overflow-hidden`,
 
   // Typography
   text: {

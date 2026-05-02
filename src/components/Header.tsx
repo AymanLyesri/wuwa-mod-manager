@@ -102,6 +102,35 @@ const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleAddCompressedMod = async () => {
+    try {
+      const file = await open({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "Compressed mod",
+            extensions: ["zip", "7z", "rar"],
+          },
+        ],
+      });
+
+      if (file) {
+        const modDirPath = localStorage.getItem("modDirPath") || "";
+        const selectedPath = file as string;
+        try {
+          await addMod(selectedPath, modDirPath);
+        } catch (error) {
+          console.error("Error adding compressed mod:", error);
+        } finally {
+          refreshMods();
+        }
+      }
+    } catch (error) {
+      console.error("Error selecting compressed mod:", error);
+    }
+  };
+
   return (
     <header
       className={`
@@ -278,7 +307,7 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <div>
-                      <label className={STYLE.text.label}>Quick Paste</label>
+                      <label className={STYLE.text.label}>Quick URL Paste</label>
                       <button
                         onClick={() => {
                           void handlePasteMod();
@@ -299,7 +328,7 @@ const Header: React.FC<HeaderProps> = ({
                           <path d="M5 4a2 2 0 012-2h2a2 2 0 012 2h3a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v1h8V4a1 1 0 00-1-1h-2a1 1 0 01-1-1H8a1 1 0 01-1 1H7z" />
                           <path d="M8 8a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 000 2h4a1 1 0 100-2H8zm0 3a1 1 0 000 2h2a1 1 0 100-2H8z" />
                         </svg>
-                        <span>Paste from Clipboard</span>
+                        <span>Paste URL from Clipboard</span>
                       </button>
                     </div>
 
@@ -350,6 +379,35 @@ const Header: React.FC<HeaderProps> = ({
                           <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
                         </svg>
                         <span>Select Folder</span>
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className={STYLE.text.label}>
+                        Add compressed archive
+                      </label>
+                      <button
+                        onClick={() => {
+                          handleAddCompressedMod();
+                          close();
+                        }}
+                        className={
+                          `
+                          ${STYLE.button.secondary} w-full mt-1 gap-2
+                          hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+                          ${TRANSITIONS.transform}
+                        `
+                        }
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M6 2a2 2 0 00-2 2v2a2 2 0 002 2V6h2V4H6V2zm8 0a2 2 0 012 2v2a2 2 0 01-2 2V6h-2V4h2V2zM4 12a2 2 0 012 2v2h2v-2H6v-2H4zm12 0h-2v2h-2v2h2a2 2 0 002-2v-2zM8 6h4v8H8V6zm2 2v4h0V8h0z" />
+                        </svg>
+                        <span>Select compressed</span>
                       </button>
                     </div>
                   </div>

@@ -6,9 +6,11 @@ import { motion } from "framer-motion";
 import FilterMods from "./Filter";
 import PresetComponent from "./Preset";
 import Masonry from "react-masonry-css";
+import { Character } from "../interfaces/Character.interface";
 
 interface ModGridProps {
   mods: Mod[];
+  characters: Character[];
   modDirPath?: string;
   onUpdateMod: (mod: Mod) => void;
   onModClick: (mod: Mod) => void;
@@ -18,6 +20,7 @@ interface ModGridProps {
 
 const ModGrid: React.FC<ModGridProps> = ({
   mods,
+  characters,
   modDirPath,
   onUpdateMod,
   onModClick,
@@ -130,9 +133,8 @@ const ModGrid: React.FC<ModGridProps> = ({
       <div ref={observerTarget} className="h-1 w-full absolute top-0" />
       {/* Header Section */}
       <div
-        className={`modgrid-header sticky top-[57px] z-40 ${STYLE.panel} ${
-          isCompact ? "compact" : ""
-        }`}
+        className={`modgrid-header sticky top-[57px] z-40 ${STYLE.panel} ${isCompact ? "compact" : ""
+          }`}
       >
         <div className="max-w-7xl mx-auto">
           <div
@@ -276,10 +278,10 @@ const ModGrid: React.FC<ModGridProps> = ({
       <div className="max-w-7xl mx-auto px-4">
         <Masonry
           breakpointCols={{
-            2000: 4,
-            1400: 3,
-            800: 2,
-            0: 1,
+            2400: 4,
+            1800: 3,
+            1200: 2,
+            600: 1,
           }}
           className="my-masonry-grid"
           columnClassName="my-masonry-grid_column"
@@ -293,10 +295,9 @@ const ModGrid: React.FC<ModGridProps> = ({
               className={`
                 relative ${TRANSITIONS.base}
                 mb-6
-                ${
-                  selectedMods.includes(mod)
-                    ? "ring-2 ring-indigo-500 scale-[0.98]"
-                    : ""
+                ${selectedMods.includes(mod)
+                  ? "ring-2 ring-indigo-500 scale-[0.98]"
+                  : ""
                 }
               `}
               onClick={() => isSelectMode && toggleModSelection(mod)}
@@ -314,6 +315,7 @@ const ModGrid: React.FC<ModGridProps> = ({
               )}
               <ModCard
                 mod={mod}
+                characters={characters}
                 onUpdateMod={onUpdateMod}
                 onClick={() => !isSelectMode && onModClick(mod)}
               />

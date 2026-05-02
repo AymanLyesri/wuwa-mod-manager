@@ -1,19 +1,93 @@
 import React from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Mod } from "../interfaces/Mod.interface";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import StatusButton from "./StatusButton";
 import { STYLE } from "../constants/styling.constant";
 import { getCategories } from "../services/category.service";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { getImageSrc } from "../services/image.service";
+import { Character } from "../interfaces/Character.interface";
 
 interface ModCardProps {
   mod: Mod;
+  characters: Character[];
   onUpdateMod: (mod: Mod) => void;
   onClick: () => void;
 }
 
-const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
+const ModCard: React.FC<ModCardProps> = ({
+  mod,
+  characters,
+  onUpdateMod,
+  onClick,
+}) => {
   const categories = getCategories();
+  const [thumbnailSrc, setThumbnailSrc] = React.useState("");
+
+  const normalizeForMatch = (value: string) =>
+    value
+      .replace(/\\/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+  const categoryMatch = React.useMemo(() => {
+    if (!mod.category) return null;
+
+    const normalizedCategory = normalizeForMatch(mod.category);
+
+    const liveCharacterMatch = characters
+      .filter((character) => character.name)
+      .map((character) => ({
+        character,
+        normalizedName: normalizeForMatch(character.name),
+      }))
+      .filter(({ normalizedName }) =>
+        normalizedName && normalizedCategory.includes(normalizedName)
+      )
+      .sort((a, b) => b.normalizedName.length - a.normalizedName.length)[0]
+      ?.character;
+
+    if (liveCharacterMatch?.thumbnail) {
+      return { icon: liveCharacterMatch.thumbnail };
+    }
+
+    return categories
+      .filter((category) => category.name !== "*Uncategorized")
+      .map((category) => {
+        const categoryName = category.name.replace(/\\/g, "");
+        return {
+          category,
+          normalizedName: normalizeForMatch(categoryName),
+        };
+      })
+      .filter(({ normalizedName }) =>
+        normalizedName && normalizedCategory.includes(normalizedName)
+      )
+      .sort((a, b) => b.normalizedName.length - a.normalizedName.length)[0]
+      ?.category;
+  }, [characters, categories, mod.category]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    if (!mod.thumbnail) {
+      setThumbnailSrc("");
+      return;
+    }
+
+    getImageSrc(mod.thumbnail)
+      .then((src) => {
+        if (active) setThumbnailSrc(src);
+      })
+      .catch((error) => {
+        console.error("Failed to load mod thumbnail:", error);
+        if (active) setThumbnailSrc("");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [mod.thumbnail]);
+
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     onUpdateMod({ ...mod, enabled: !mod.enabled });
@@ -22,161 +96,100 @@ const ModCard: React.FC<ModCardProps> = ({ mod, onUpdateMod, onClick }) => {
   const handleOpenFiles = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await openPath(mod.path);
+      await invoke("plugin:opener|reveal_item_in_dir", {
+        paths: [mod.path],
+      });
     } catch (error) {
       console.error("Failed to open mod directory:", error);
     }
   };
-
   return (
     <div
-      className={`
-      ${STYLE.card} 
-      group/card
-      hover:shadow-2xl hover:shadow-neutral-200/20 dark:hover:shadow-black/40
-      hover:-translate-y-1
-      transition-all duration-300 ease-out
-      h-full flex flex-col
-      !p-0
-    `}
+      className={`${STYLE.cardApple} group/card cursor-pointer w-full`}
       onClick={onClick}
+      role="button"
+      aria-label={`Open ${mod.name}`}
     >
-      {/* Image container */}
-      <div
-        className={`
-        ${STYLE.image.container}
-        ring-1 ring-white/10 dark:ring-black/10
-        before:absolute before:inset-0 before:z-10 before:rounded-t-2xl before:rounded-b-none before:ring-1 before:ring-inset before:ring-white/10 dark:before:ring-white/5
-        after:absolute after:inset-0 after:z-10 after:rounded-t-2xl after:rounded-b-none after:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]
-        overflow-hidden
-        w-full
-        aspect-[16/9]
-        rounded-t-2xl rounded-b-none
-      `}
-      >
-        {/* Category Icon */}
-        {mod.category &&
-          categories.find((cat) => cat.name === mod.category)?.icon && (
-            <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm p-2 sm:p-2.5 shadow-lg ring-1 ring-white/10">
-              <img
-                src={categories.find((cat) => cat.name === mod.category)?.icon}
-                alt={mod.category}
-                className="w-5 h-5 sm:w-6 sm:h-6"
-                title={mod.category}
-              />
-            </div>
-          )}
+      {/* Left accent when enabled */}
+      {mod.enabled && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 shadow-[0_6px_16px_rgba(16,185,129,0.12)]" />
+      )}
 
-        {mod.thumbnail ? (
-          <div className="relative h-full w-full">
-            <img
-              src={convertFileSrc(mod.thumbnail) + "?t=" + Date.now()}
-              alt={mod.name}
-              className={`
-                ${STYLE.image.responsive}
-                object-center scale-100 group-hover/card:scale-110
-                transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]
-              `}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/5 to-transparent opacity-70 group-hover/card:opacity-100 transition-opacity duration-300" />
-          </div>
+      {/* Image - edge to edge */}
+      <div className={`relative ${STYLE.image.container} aspect-[16/10]`}>
+        {thumbnailSrc ? (
+          <img
+            src={thumbnailSrc}
+            alt={mod.name}
+            className={`${STYLE.image.responsive} object-center group-hover/card:scale-105 transition-transform duration-500`}
+          />
         ) : (
-          <div
-            className={`
-            ${STYLE.image.placeholder}
-            bg-neutral-100 dark:bg-neutral-800/50
-            rounded-2xl backdrop-blur-sm
-          `}
-          >
+          <div className={`${STYLE.image.placeholder} rounded-b-none`}>
             <svg
-              className="w-10 h-10 sm:w-14 sm:h-14 mb-2 sm:mb-3 text-neutral-400 dark:text-neutral-500"
+              className="w-12 h-12 text-neutral-400 dark:text-neutral-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
         )}
+
+        {/* Category icon */}
+        {mod.category && categoryMatch?.icon && (
+          <div className="absolute top-4 left-4 z-20 rounded-full bg-white/30 dark:bg-black/30 backdrop-blur-md p-1 shadow">
+            <img src={categoryMatch.icon} alt={mod.category} className="w-9 h-9 rounded-full object-cover" title={mod.category} />
+          </div>
+        )}
+
+        {/* subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col space-y-3 p-6">
-        {/* Header with version */}
-        <div className={STYLE.flex.between}>
-          <h3
-            className={
-              STYLE.text.heading + " truncate max-w-[80%] text-base sm:text-lg"
-            }
-          >
-            {mod.name}
-          </h3>
-          {mod.version && (
-            <span
-              className={`${STYLE.badge.base} ${
-                mod.enabled ? STYLE.badge.success : STYLE.badge.disabled
-              } text-xs sm:text-sm`}
-            >
-              v{mod.version}
-            </span>
-          )}
+      <div className="p-5 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-lg sm:text-xl font-semibold text-neutral-900 dark:text-white truncate">
+              {mod.name}
+            </h3>
+            {mod.author && (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">by {mod.author}</p>
+            )}
+          </div>
+
+          <div className="flex items-start gap-2">
+            {mod.version && (
+              <span className={`${STYLE.badge.base} ${mod.enabled ? STYLE.badge.success : STYLE.badge.disabled} text-xs`}>v{mod.version}</span>
+            )}
+            <div>
+              <StatusButton mod={mod} onClick={(e) => { e.stopPropagation(); handleToggle(e as any); }} />
+            </div>
+          </div>
         </div>
 
-        {/* Author */}
-        {mod.author && (
-          <p className={STYLE.text.caption + " italic text-xs sm:text-sm"}>
-            by {mod.author}
-          </p>
-        )}
-
-        {/* Description */}
         {mod.description && (
-          <p
-            className={`${STYLE.text.body} line-clamp-2 text-sm sm:text-base flex-1`}
-          >
-            {mod.description}
-          </p>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300 line-clamp-3">{mod.description}</p>
         )}
 
-        {/* Buttons */}
-        <div className={STYLE.flex.between + " mt-auto pt-2 sm:pt-3"}>
+        <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2">
-            <StatusButton mod={mod} onClick={handleToggle} />
             <button
-              className={STYLE.button.icon + " p-1.5"}
-              onClick={handleOpenFiles}
+              className={`${STYLE.button.icon} p-2 bg-white/0 dark:bg-transparent rounded-full`}
+              onClick={(e) => { e.stopPropagation(); handleOpenFiles(e); }}
               title="Open Files"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-neutral-600 dark:text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
               </svg>
             </button>
           </div>
+
+          <div className="text-xs text-neutral-400">{mod.category ?? "Uncategorized"}</div>
         </div>
       </div>
-
-      {mod.enabled && (
-        <div className="absolute top-0 right-0 w-full">
-          <div className="h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_1px_4px_rgba(16,185,129,0.3)]" />
-        </div>
-      )}
     </div>
   );
 };

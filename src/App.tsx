@@ -8,9 +8,11 @@ import { deleteMod, setModInfo } from "./services/mod.service";
 import { AnimatePresence } from "framer-motion";
 import { ToastContainer } from "react-toastify";
 import { getCharacters } from "./services/character.service";
+import { Character } from "./interfaces/Character.interface";
 
 const App: React.FC = () => {
   const [mods, setMods] = useState<Mod[]>([]);
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedMod, setSelectedMod] = useState<Mod | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [modDirPath, setModDirPath] = useState<string>(
@@ -36,6 +38,7 @@ const App: React.FC = () => {
     const loadCharacters = async () => {
       const characters = await getCharacters();
       console.log("[characters] Loaded characters:", characters);
+      setCharacters(characters);
     };
 
     loadCharacters().catch((error) => {
@@ -107,6 +110,7 @@ const App: React.FC = () => {
             {modDirPath ? (
               <ModGrid
                 mods={mods}
+                characters={characters}
                 onUpdateMod={handleUpdateMod}
                 onModClick={handleModClick}
                 modDirPath={modDirPath}
@@ -143,12 +147,20 @@ const App: React.FC = () => {
         />
 
         {isPanelOpen && selectedMod && (
-          <ModInfoPanel
-            mod={selectedMod}
-            isOpen={isPanelOpen}
-            onUpdate={handleUpdateMod}
-            onClose={handleClosePanel}
-          />
+          <div
+            className="fixed inset-0 z-40"
+            onClick={handleClosePanel}
+            aria-hidden="true"
+          >
+            <div className="absolute inset-0 bg-black/20" />
+            <ModInfoPanel
+              mod={selectedMod}
+              characters={characters}
+              isOpen={isPanelOpen}
+              onUpdate={handleUpdateMod}
+              onClose={handleClosePanel}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -95,7 +95,7 @@ pub fn delete_preset(path: String, preset_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn apply_preset(path: String, preset_id: String) -> Result<(), String> {
+pub async fn apply_preset(path: String, preset_id: String) -> Result<(), String> {
     println!("Applying preset {} to path {}", preset_id, path);
 
     let dir = Path::new(&path);
@@ -124,7 +124,7 @@ pub fn apply_preset(path: String, preset_id: String) -> Result<(), String> {
         preset.enabled_mods.len()
     );
 
-    let mods = get_folder_mods(path.clone())?;
+    let mods = get_folder_mods(path.clone()).await?;
     println!("Found {} total mods in directory", mods.len());
 
     for mod_entry in mods {

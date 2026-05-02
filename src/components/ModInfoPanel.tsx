@@ -3,16 +3,16 @@ import { Mod } from "../interfaces/Mod.interface";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { setModThumbnail } from "../services/mod.service";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCategories } from "../services/category.service";
-import { getCharacters } from "../services/character.service";
 import { Character } from "../interfaces/Character.interface";
 import { COLORS, STYLE } from "../constants/styling.constant";
 import StatusButton from "./StatusButton";
 import { motion } from "framer-motion";
+import { getImageSrc } from "../services/image.service";
 
 interface ModInfoPanelProps {
   mod: Mod;
+  characters: Character[];
   isOpen?: boolean;
   onUpdate: (mod: Mod) => void;
   onClose: () => void;
@@ -20,6 +20,7 @@ interface ModInfoPanelProps {
 
 const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
   mod,
+  characters,
   isOpen = true,
   onUpdate,
   onClose,
@@ -30,41 +31,27 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
   const [displayThumbnail, setDisplayThumbnail] = useState<string>("");
   const thumbnailRefZone = useRef<HTMLDivElement>(null);
   const staticCategories = getCategories();
-  const [characters, setCharacters] = useState<Character[]>([]);
+  const panelCharacters =
+    characters.length > 0
+      ? characters
+      : staticCategories.map((c) => ({ name: c.name, thumbnail: c.icon }));
 
   useEffect(() => {
     setFocusedMod(mod);
-    setDisplayThumbnail(mod.thumbnail ? convertFileSrc(mod.thumbnail) : "");
+    if (mod.thumbnail) {
+      getImageSrc(mod.thumbnail)
+        .then(setDisplayThumbnail)
+        .catch((error) => {
+          console.error("Error loading thumbnail preview:", error);
+          setDisplayThumbnail("");
+        });
+    } else {
+      setDisplayThumbnail("");
+    }
     if (isOpen && thumbnailRefZone.current) {
       thumbnailRefZone.current.focus();
     }
   }, [mod, isOpen]);
-
-  useEffect(() => {
-    let mounted = true;
-    getCharacters()
-      .then((list) => {
-        if (!mounted) return;
-        if (Array.isArray(list) && list.length) {
-          setCharacters(list);
-        } else {
-          // fallback to static categories as characters
-          setCharacters(
-            staticCategories.map((c) => ({ name: c.name, thumbnail: c.icon }))
-          );
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to load characters, falling back:", err);
-        setCharacters(
-          staticCategories.map((c) => ({ name: c.name, thumbnail: c.icon }))
-        );
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const handleChange = useCallback(
     (
@@ -104,7 +91,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
     try {
       if (typeof file === "string") {
         setThumbnailPath(file);
-        setDisplayThumbnail(convertFileSrc(file));
+        setDisplayThumbnail(await getImageSrc(file));
       } else {
         const reader = new FileReader();
         reader.onload = () => {
@@ -291,6 +278,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
 
   return (
     <motion.div
+      onClick={(e) => e.stopPropagation()}
       initial={{ x: "100%" }}
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
@@ -357,7 +345,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             {/* Category Icon */}
             {focusedMod.category && (
               (() => {
-                const match = characters.find(
+                const match = panelCharacters.find(
                   (c) => c.name === focusedMod.category
                 );
                 if (match && match.thumbnail) {
@@ -545,7 +533,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 className={STYLE.select + " w-full"}
               >
                 <option value="">Select a category</option>
-                {characters.map((category) => (
+                {panelCharacters.map((category) => (
                   <option key={category.name} value={category.name}>
                     {category.name}
                   </option>

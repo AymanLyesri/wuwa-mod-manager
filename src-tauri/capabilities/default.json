@@ -23,16 +23,8 @@
         }
       ]
     },
-    {
-      "identifier": "opener:default",
-      "allow": [
-        {
-          "path": "**/*"
-        }
-      ]
-    },
     "clipboard-manager:default",
     "clipboard-manager:allow-read-text",
-    "opener:allow-open-path"
+    "opener:allow-reveal-item-in-dir"
   ]
 }
