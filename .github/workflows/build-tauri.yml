@@ -158,6 +158,7 @@ jobs:
       - name: Clone AUR repo
         run: |
           git clone ssh://aur@aur.archlinux.org/wuwa-moma-bin.git aur
+          git config --global --add safe.directory "$(pwd)/aur"
           cd aur
           git config user.name "AymanLyesri"
           git config user.email "your@email.com"
