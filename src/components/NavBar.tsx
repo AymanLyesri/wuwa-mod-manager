@@ -4,12 +4,26 @@ import { COLORS, STYLE, TRANSITIONS } from "../constants/styling.constant";
 import { addMod, downloadMod } from "../services/mod.service";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import PresetComponent from "./Preset";
+import FilterMods from "./Filter";
+import { Mod } from "../interfaces/Mod.interface";
 
 interface HeaderProps {
   refreshMods: () => void;
   setModDirPath: (path: string) => void;
   darkMode: boolean;
   setDarkMode: (darkMode: boolean) => void;
+  // ModGrid Header props
+  mods?: Mod[];
+  isSelectMode?: boolean;
+  selectedMods?: Mod[];
+  isCompact?: boolean;
+  modDirPath?: string;
+  onToggleSelectMode?: () => void;
+  onDeleteSelected?: () => void;
+  onApplyPreset?: () => void;
+  onFetchMods?: () => void;
+  onFilter?: (filteredMods: Mod[]) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -17,6 +31,16 @@ const Header: React.FC<HeaderProps> = ({
   setModDirPath,
   darkMode,
   setDarkMode,
+  mods = [],
+  isSelectMode = false,
+  selectedMods = [],
+  isCompact = false,
+  modDirPath,
+  onToggleSelectMode,
+  onDeleteSelected,
+  onApplyPreset,
+  onFetchMods,
+  onFilter,
 }) => {
   const [modUrl, setModUrl] = useState("");
 
@@ -132,14 +156,15 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
+
     <header
       className={`
-      ${COLORS.background.card} backdrop-blur-sm border-b ${COLORS.border.panel}
-      p-2 sticky top-0 z-50 ${TRANSITIONS.base}
+       w-full z-50 ${TRANSITIONS.base} will-change-none fixed
     `}
     >
       <div
-        className={`${STYLE.container} ${STYLE.flex.between} flex-col md:flex-row gap-4`}
+        className={` ${COLORS.background.card} border-b ${COLORS.border.panel}
+      p-2 ${STYLE.container} ${STYLE.flex.between} flex-col md:flex-row gap-4`}
       >
         {/* Logo/Title */}
         <div className={STYLE.flex.center + " group"}>
@@ -417,7 +442,153 @@ const Header: React.FC<HeaderProps> = ({
           </Popover>
         </div>
       </div>
+      {mods && mods.length > 0 && (
+        <div
+          className={`modgrid-header z-50 ${STYLE.panel} ${isCompact ? "compact" : ""}`}
+        >
+          <div className="max-w-7xl mx-auto">
+            <div className={STYLE.flex.between + " flex-col md:flex-row gap-4 px-10"}>
+              {/* Title and Stats Section */}
+              <div className={`space-y-2 ${STYLE.flex.wrap} gap-5`}>
+                <div className={STYLE.flex.start}>
+                  <h2 className={STYLE.text.heading}>Mods</h2>
+                </div>
+
+                <div className={STYLE.flex.wrap + " gap-2"}>
+                  {/* Mod Count */}
+                  <div
+                    className={`${STYLE.text.label} ${STYLE.flex.center} gap-1.5`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>{mods.length} installed</span>
+                  </div>
+
+                  {/* Enabled Count */}
+                  <div
+                    className={`${STYLE.text.label} ${STYLE.flex.center} gap-1.5`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>
+                      {mods.filter((mod) => mod.enabled).length} enabled
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Section */}
+              <div
+                className={
+                  STYLE.flex.center +
+                  " gap-2 flex-wrap sm:flex-nowrap justify-end"
+                }
+              >
+                {/* Refresh Button */}
+                <button
+                  className={STYLE.button.icon}
+                  onClick={onFetchMods}
+                  title="Refresh mods"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+
+                <div className="p-0">
+                  <PresetComponent
+                    mods={mods}
+                    onApplyPreset={onApplyPreset || (() => { })}
+                    modDirPath={modDirPath}
+                  />
+                </div>
+
+                <div className="p-0">
+                  <FilterMods mods={mods} onFilter={onFilter || (() => { })} />
+                </div>
+
+                {/* Select Mode Toggle */}
+                <button
+                  onClick={onToggleSelectMode}
+                  className={STYLE.button.secondary}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>{isSelectMode ? "Cancel" : "Select"}</span>
+                </button>
+
+                {/* Delete Selected Button */}
+                {isSelectMode && selectedMods.length > 0 && (
+                  <button
+                    onClick={onDeleteSelected}
+                    className={STYLE.button.secondary + " !bg-red-500 text-white"}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Delete {selectedMods.length} Selected</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
+
+
+
+
+
+
   );
 };
 

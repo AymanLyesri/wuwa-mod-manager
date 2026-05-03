@@ -1,23 +1,23 @@
 export const COLORS = {
   background: {
-    panel: "bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md",
+    panel: "bg-white/95 dark:bg-neutral-800/95",
     input:
-      "bg-white/80 hover:bg-white focus:bg-white dark:bg-neutral-800/50 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800",
+      "bg-white/90 hover:bg-white focus:bg-white dark:bg-neutral-800/70 dark:hover:bg-neutral-800/80 dark:focus:bg-neutral-800",
     button: {
       primary:
-        "bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 dark:from-violet-600 dark:to-indigo-600 dark:hover:from-violet-500 dark:hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/25 dark:shadow-indigo-900/40",
+        "bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 dark:from-violet-600 dark:to-indigo-600 dark:hover:from-violet-500 dark:hover:to-indigo-500 text-white shadow-md shadow-indigo-500/15",
       secondary:
-        "bg-white/80 hover:bg-white dark:bg-neutral-800/80 dark:hover:bg-neutral-700/90 text-neutral-900 dark:text-white shadow-lg shadow-neutral-200/50 dark:shadow-black/20 backdrop-blur-md",
+        "bg-white/90 hover:bg-white dark:bg-neutral-800/90 dark:hover:bg-neutral-700/95 text-neutral-900 dark:text-white shadow-sm",
       toggle: {
         enabled:
-          "bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 dark:shadow-emerald-900/40",
+          "bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-500/15",
         disabled:
-          "bg-neutral-200/80 hover:bg-neutral-300/80 dark:bg-neutral-700/50 dark:hover:bg-neutral-600/50 text-neutral-600 dark:text-neutral-400 backdrop-blur-md",
+          "bg-neutral-200/80 hover:bg-neutral-300/80 dark:bg-neutral-700/70 dark:hover:bg-neutral-600/80 text-neutral-600 dark:text-neutral-400",
       },
     },
-    card: "bg-white/80 dark:bg-neutral-800/80 backdrop-blur-md",
-    overlay: "bg-black/60 backdrop-blur-md dark:bg-black/80",
-    popover: "bg-white/90 dark:bg-neutral-800/90 backdrop-blur-md",
+    card: "bg-white/95 dark:bg-neutral-800/95",
+    overlay: "bg-black/70 dark:bg-black/85",
+    popover: "bg-white/95 dark:bg-neutral-800/95",
   },
   text: {
     primary: "text-neutral-900 dark:text-white",
@@ -34,10 +34,9 @@ export const COLORS = {
     card: "border border-white/20 dark:border-neutral-800/50 hover:border-violet-300/50 dark:hover:border-violet-500/50",
   },
   shadow: {
-    panel: "shadow-xl shadow-neutral-200/20 dark:shadow-black/20",
-    button:
-      "hover:shadow-lg hover:shadow-violet-500/25 dark:hover:shadow-violet-900/40",
-    card: "shadow-lg hover:shadow-xl shadow-neutral-200/20 dark:shadow-black/20 hover:shadow-violet-500/10 dark:hover:shadow-violet-900/20",
+    panel: "shadow-md shadow-neutral-200/10 dark:shadow-black/10",
+    button: "shadow-sm",
+    card: "shadow-sm",
     none: "shadow-none",
   },
   accent: {
@@ -57,23 +56,19 @@ export const COLORS = {
       "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700",
   },
   glow: {
-    primary:
-      "after:absolute after:inset-0 after:rounded-lg after:bg-violet-500/20 after:blur-xl after:transition-opacity hover:after:opacity-100 after:opacity-0 after:-z-10",
-    success:
-      "after:absolute after:inset-0 after:rounded-lg after:bg-emerald-500/20 after:blur-xl after:transition-opacity hover:after:opacity-100 after:opacity-0 after:-z-10",
-    danger:
-      "after:absolute after:inset-0 after:rounded-lg after:bg-rose-500/20 after:blur-xl after:transition-opacity hover:after:opacity-100 after:opacity-0 after:-z-10",
+    primary: "hover:border-violet-400/50 dark:hover:border-violet-500/50",
+    success: "hover:border-emerald-400/50 dark:hover:border-emerald-500/50",
+    danger: "hover:border-rose-400/50 dark:hover:border-rose-500/50",
   },
 };
 
 export const TRANSITIONS = {
-  base: "transition-all duration-300 ease-out",
-  interactive: "transition-all duration-200 ease-in-out",
-  transform:
-    "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-  opacity: "transition-opacity duration-200 ease-in-out",
-  scale: "transition-transform duration-200 hover:scale-[1.02]",
-  glow: "relative transition-all duration-300 ease-out hover:shadow-lg",
+  base: "transition-colors duration-200 ease-out",
+  interactive: "transition-colors duration-150 ease-in-out",
+  transform: "transition-transform duration-200 ease-out",
+  opacity: "transition-opacity duration-150 ease-in-out",
+  scale: "transition-transform duration-200 hover:scale-[1.01]",
+  glow: "relative transition-colors duration-200 ease-out",
 };
 
 export const LAYOUT = {
@@ -106,27 +101,27 @@ export const STYLE = {
 
   button: {
     primary: `relative px-5 py-2.5 rounded-lg font-semibold ${LAYOUT.flex.center}
-      ${COLORS.background.button.primary} ${TRANSITIONS.interactive} ${COLORS.shadow.button} ${COLORS.glow.primary}
-      hover:-translate-y-0.5 active:translate-y-0`,
+      ${COLORS.background.button.primary} ${TRANSITIONS.interactive} ${COLORS.shadow.button}
+      active:scale-95`,
 
     secondary: `relative px-3 py-2 rounded-lg font-medium ${LAYOUT.flex.center}
       ${COLORS.background.button.secondary} ${COLORS.text.primary} ${TRANSITIONS.interactive}
-      hover:-translate-y-0.5 active:translate-y-0`,
+      active:scale-95`,
 
     icon: `relative p-2 rounded-lg ${TRANSITIONS.interactive} ${LAYOUT.flex.center}
       hover:bg-neutral-100 dark:hover:bg-neutral-700
-      hover:-translate-y-0.5 active:translate-y-0`,
+      active:scale-95`,
 
     link: `${COLORS.accent.primary} ${TRANSITIONS.interactive} 
       hover:underline flex items-center gap-1
-      hover:-translate-y-0.5 active:translate-y-0`,
+      active:scale-95`,
   },
 
   card: `group relative rounded-xl ${COLORS.background.card} ${COLORS.border.card} 
-    ${COLORS.shadow.card} ${TRANSITIONS.base} p-6 space-y-4 overflow-hidden`,
+    ${COLORS.shadow.card} ${TRANSITIONS.base} p-6 space-y-4 overflow-hidden contain-content`,
   // Apple-inspired card: larger radius, subtle glass, edge-to-edge image
   cardApple: `group relative rounded-3xl ${COLORS.background.card} ${COLORS.border.card} 
-    ${COLORS.shadow.card} ${TRANSITIONS.base} overflow-hidden`,
+    ${COLORS.shadow.card} ${TRANSITIONS.base} overflow-hidden contain-content`,
 
   // Typography
   text: {
@@ -163,9 +158,9 @@ export const STYLE = {
     flex flex-col overflow-hidden ${COLORS.background.panel} ${COLORS.border.panel} shadow-2xl`,
 
   modal: {
-    overlay: `fixed inset-0 ${COLORS.background.overlay} ${LAYOUT.flex.center} z-50`,
+    overlay: `fixed inset-0 ${COLORS.background.overlay} ${LAYOUT.flex.center} z-50 contain-layout`,
     content: `${COLORS.background.panel} rounded-xl ${COLORS.shadow.panel} 
-      max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto`,
+      max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto contain-content`,
   },
 
   // Image Components

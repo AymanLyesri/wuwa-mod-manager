@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import ModGrid from "./components/ModGrid";
 import { Mod } from "./interfaces/Mod.interface";
 import { getFolderContents } from "./services/folder.service";
-import Header from "./components/Header";
+import Header from "./components/NavBar";
 import ModInfoPanel from "./components/ModInfoPanel";
 import { deleteMod, setModInfo } from "./services/mod.service";
 import { AnimatePresence } from "framer-motion";
@@ -27,6 +27,8 @@ const App: React.FC = () => {
     }
     return true;
   });
+  const [selectedMods, setSelectedMods] = useState<Mod[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
 
   useEffect(() => {
     if (modDirPath) {
@@ -93,6 +95,27 @@ const App: React.FC = () => {
     });
   };
 
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    if (!isSelectMode) {
+      setSelectedMods([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    handleModsDelete(selectedMods);
+    setSelectedMods([]);
+    setIsSelectMode(false);
+  };
+
+  const handleApplyPreset = async () => {
+    await fetchMods();
+  };
+
+  const handleFilterChange = () => {
+    // Filter changes are handled within ModGrid
+  };
+
   return (
     <div className="min-h-screen w-full bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white flex flex-col">
       <Header
@@ -100,6 +123,16 @@ const App: React.FC = () => {
         setModDirPath={setModDirPath}
         setDarkMode={setDarkMode}
         darkMode={darkMode}
+        mods={mods}
+        isSelectMode={isSelectMode}
+        selectedMods={selectedMods}
+        isCompact={false}
+        modDirPath={modDirPath}
+        onToggleSelectMode={toggleSelectMode}
+        onDeleteSelected={handleDeleteSelected}
+        onApplyPreset={handleApplyPreset}
+        onFetchMods={fetchMods}
+        onFilter={handleFilterChange}
       />
       <div className="flex-1 relative flex flex-col lg:flex-row">
         <main
@@ -113,9 +146,9 @@ const App: React.FC = () => {
                 characters={characters}
                 onUpdateMod={handleUpdateMod}
                 onModClick={handleModClick}
-                modDirPath={modDirPath}
-                onDeleteMods={handleModsDelete}
-                fetchMods={fetchMods}
+                selectedMods={selectedMods}
+                onSelectedModsChange={setSelectedMods}
+                isSelectMode={isSelectMode}
               />
             ) : (
               <div className="text-center p-8">

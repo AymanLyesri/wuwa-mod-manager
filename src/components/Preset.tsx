@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Mod } from "../interfaces/Mod.interface";
 import { Preset } from "../interfaces/Preset.interface";
-import { STYLE, COLORS } from "../constants/styling.constant";
+import { STYLE, COLORS, TRANSITIONS } from "../constants/styling.constant";
 import { v4 as uuidv4 } from "uuid";
 import {
   savePreset,
@@ -155,9 +155,8 @@ const PresetComponent: React.FC<PresetProps> = ({
             <button
               onClick={createPreset}
               disabled={!newPresetName.trim()}
-              className={`${STYLE.button.primary} w-full ${
-                !newPresetName.trim() ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`${STYLE.button.primary} w-full ${!newPresetName.trim() ? "opacity-50 cursor-not-allowed" : ""
+                }`}
             >
               Create Preset from Enabled Mods
             </button>
@@ -189,8 +188,8 @@ const PresetComponent: React.FC<PresetProps> = ({
                   key={preset.id}
                   className={`
                     ${STYLE.card} space-y-2
-                    hover:shadow-lg hover:shadow-neutral-200/20 dark:hover:shadow-black/40
-                    transition-all duration-300
+                      hover:border-violet-400/50 dark:hover:border-violet-500/50
+                      ${TRANSITIONS.base}
                   `}
                 >
                   <div className={STYLE.flex.between}>

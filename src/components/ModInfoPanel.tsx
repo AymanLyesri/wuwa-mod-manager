@@ -350,7 +350,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 );
                 if (match && match.thumbnail) {
                   return (
-                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm  shadow-lg ring-1 ring-white/10">
+                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/70 shadow-sm ring-1 ring-white/5">
                       <img
                         src={match.thumbnail}
                         alt={focusedMod.category}
@@ -367,7 +367,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 );
                 if (staticMatch && staticMatch.icon) {
                   return (
-                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/30 backdrop-blur-sm p-2 sm:p-2.5 shadow-lg ring-1 ring-white/10">
+                    <div className="absolute top-3 left-3 z-20 rounded-xl bg-black/70 p-2 sm:p-2.5 shadow-sm ring-1 ring-white/5">
                       <img
                         src={staticMatch.icon}
                         alt={focusedMod.category}
@@ -399,7 +399,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 className={`
                 ${STYLE.image.placeholder}
                 bg-neutral-100 dark:bg-neutral-800/50
-                rounded-2xl backdrop-blur-sm
+                rounded-2xl
               `}
               >
                 <svg
@@ -421,8 +421,8 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
             {/* Hover overlay */}
             <div
               className={`
-                absolute inset-0 ${STYLE.flex.center} bg-black/40 backdrop-blur-[2px] rounded-2xl
-                opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10
+                absolute inset-0 ${STYLE.flex.center} bg-black/50 rounded-2xl
+                opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10
                 pointer-events-none
               `}
             >
@@ -443,7 +443,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 text-sm sm:text-base
                 py-1.5 sm:py-2 px-3 sm:px-4
                 bg-cyan-600 hover:bg-cyan-700
-                backdrop-blur-sm
               `}
             >
               <svg
@@ -465,7 +464,6 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
                 text-sm sm:text-base
                 py-1.5 sm:py-2 px-3 sm:px-4
                 bg-black/50 hover:bg-black/60
-                backdrop-blur-sm
               `}
             >
               <svg
@@ -561,7 +559,7 @@ const ModInfoPanel: React.FC<ModInfoPanelProps> = ({
       <div
         className={`
         ${STYLE.flex.between} p-3 sm:p-4 w-full border-t ${COLORS.border.panel}
-        bg-white dark:bg-neutral-800 backdrop-blur-sm
+        bg-white/95 dark:bg-neutral-800/95
         shrink-0
       `}
       >

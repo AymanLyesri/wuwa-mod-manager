@@ -139,7 +139,7 @@ const ModCard: React.FC<ModCardProps> = ({
 
         {/* Category icon */}
         {mod.category && categoryMatch?.icon && (
-          <div className="absolute top-4 left-4 z-20 rounded-full bg-white/30 dark:bg-black/30 backdrop-blur-md p-1 shadow">
+          <div className="absolute top-4 left-4 z-20 rounded-full bg-white/80 dark:bg-black/60 p-1 shadow-sm">
             <img src={categoryMatch.icon} alt={mod.category} className="w-9 h-9 rounded-full object-cover" title={mod.category} />
           </div>
         )}

@@ -58,20 +58,23 @@
 
 /* ModGrid Header Styles */
 .modgrid-header {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin: 1.5rem;
-  padding: 1.5rem;
-  transform-origin: top;
-  will-change: transform, margin, padding, background;
+  transition: margin 0.3s ease-out, padding 0.3s ease-out;
+  margin: 1rem;
+  padding: 1rem;
+  contain: layout style;
 }
 
 .modgrid-header.compact {
-  margin: 0;
+  /* margin: 0; */
   padding: 0.5rem;
-  backdrop-filter: blur(12px);
+  background: rgba(243, 244, 246, 0.98);
   border-width: 0;
   border-radius: 0;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.dark .modgrid-header.compact {
+  background: rgba(23, 23, 23, 0.98);
 }
 
 :root {
